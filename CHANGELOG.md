@@ -1,6 +1,17 @@
 # Change log
 
-## Project overview and data safety — 3 October 2026
+## New interface: Drawing office by day, Night shift by night — 3 October 2026
+
+Authorized by the owner after reviewing the design proposal. Not yet published.
+
+- New layout with a side menu, a Portfolio screen and a redesigned project workspace. Each screen has its own address (`#/portfolio`, `#/project/<id>`), so reloading keeps your place.
+- Portfolio: project count, open and overdue actions, contract value per currency, a project table with status, next action and history, and the actions due in the next 7 days.
+- Project workspace: a title block with customer, scope, value, VAT and total; full-width task timelines; clickable next actions with date shifts shown; and payment terms with a proportion bar.
+- Day, night and auto modes. Auto follows the device setting; a chosen mode is remembered on the device.
+- Text typed in Arabic displays right to left in titles, lists, previews and timeline labels. The interface stays in English and amounts stay as "SAR".
+- Fonts are bundled with the app instead of relying on system fonts.
+- Added portfolio summary functions with tests.
+
 
 Authorized by the owner. Not yet published to the live Site.
 

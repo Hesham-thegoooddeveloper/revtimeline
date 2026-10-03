@@ -16,9 +16,6 @@ jobs:
       - name: Verify formatting
         run: npx --yes prettier@3.9.9 --check "dist/*.mjs" dist/style.css "tests/*.mjs"
       - name: Verify module syntax
-        run: |
-          node --check dist/app.mjs
-          node --check dist/model.mjs
-          node --check dist/sample.mjs
-      - name: Verify date and connection behavior
-        run: node --test tests/model.test.mjs
+        run: for f in dist/*.mjs; do node --check "$f"; done
+      - name: Verify dates, connections and summaries
+        run: node --test tests/*.test.mjs

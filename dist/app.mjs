@@ -12,6 +12,14 @@ import {
   termsPercent,
 } from './model.mjs';
 import { sample } from './sample.mjs';
+import {
+  openActions,
+  nextAction,
+  projectStatus,
+  dueSoon,
+  contractValue,
+  historyCounts,
+} from './portfolio.mjs';
 const $ = (id) => document.getElementById(id),
   key = 'trackflow-prototype-v1';
 function uid() {
@@ -94,10 +102,31 @@ let active = data.projects[0].id,
   undoStack = [],
   redoStack = [],
   pendingImport = null,
-  suppressClickUntil = 0;
+  suppressClickUntil = 0,
+  view = 'portfolio';
 const geometry = new Map(),
   project = () => data.projects.find((p) => p.id === active),
   taskBy = (id) => project().tasks.find((t) => t.id === id);
+// Screens are addressed as #/portfolio and #/project/<id> so a reload keeps your place.
+function route() {
+  const match = location.hash.match(/^#\/project\/([A-Za-z0-9_-]+)$/);
+  if (match && data.projects.some((p) => p.id === match[1])) {
+    if (active !== match[1]) viewZoom = {};
+    active = match[1];
+    view = 'project';
+  } else view = 'portfolio';
+}
+function ensureActive() {
+  if (data.projects.some((p) => p.id === active)) return;
+  active = data.projects[0].id;
+  if (view === 'project') {
+    view = 'portfolio';
+    history.replaceState(null, '', '#/portfolio');
+  }
+}
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+// True when the first strong character is right-to-left (Arabic or Hebrew).
+const isRtl = (s) => /^[^A-Za-z֐-ࣿ]*[֐-ࣿ]/.test(s);
 function save() {
   if (saveBlocked) {
     $('saved').textContent = 'Not saved';
@@ -148,7 +177,7 @@ function restore(kind) {
   if (!source.length) return;
   dest.push(structuredClone(data));
   data = source.pop();
-  if (!data.projects.some((p) => p.id === active)) active = data.projects[0].id;
+  ensureActive();
   if (focusedTask && !taskBy(focusedTask)) closeTask();
   viewZoom = {};
   save();
@@ -210,7 +239,7 @@ function taskMarkup(t, width, surface = 'main') {
   }
   const height = Math.max(172, y + 12);
   geometry.set(surface + ':' + t.id, { ...b, nodes });
-  let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6d9ad2"/></marker></defs>`;
+  let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
   for (let i = 0; i < t.edges.length; i++) {
     const [a, c, reverse] = t.edges[i],
       n = nodes.get(a),
@@ -222,78 +251,227 @@ function taskMarkup(t, width, surface = 'main') {
       path = `M ${ax} ${n.y} C ${mid} ${n.y}, ${mid} ${m.y}, ${cx} ${m.y}`,
       mx = (n.x + m.x) / 2,
       my = (n.y + m.y) / 2;
-    svg += `<path class="edge-hit" data-edge="${i}" data-task="${t.id}" d="${path}" fill="none" stroke="transparent" stroke-width="18" tabindex="0" role="button" aria-label="Edit connection direction"/><path d="${path}" fill="none" stroke="#9bbce5" stroke-width="1.7" marker-${reverse ? 'start' : 'end'}="url(#arrow-${surface}-${t.id})" pointer-events="none"/><g class="between-add" data-between="${i}" data-task="${t.id}" tabindex="0" role="button" aria-label="Insert event between connected events"><circle cx="${mx}" cy="${my}" r="17" fill="transparent"/><circle cx="${mx}" cy="${my}" r="9" fill="#fff" stroke="#c1d3e9"/><text x="${mx}" y="${my + 4}" text-anchor="middle" fill="#5185bd" font-size="14">+</text></g>`;
+    svg += `<path class="edge-hit" data-edge="${i}" data-task="${t.id}" d="${path}" fill="none" stroke="transparent" stroke-width="18" tabindex="0" role="button" aria-label="Edit connection direction"/><path class="edge" d="${path}" marker-${reverse ? 'start' : 'end'}="url(#arrow-${surface}-${t.id})" pointer-events="none"/><g class="between-add" data-between="${i}" data-task="${t.id}" tabindex="0" role="button" aria-label="Insert event between connected events"><circle class="hit" cx="${mx}" cy="${my}" r="17"/><circle class="add-ring" cx="${mx}" cy="${my}" r="9"/><text class="add-plus" x="${mx}" y="${my + 4}" text-anchor="middle">+</text></g>`;
   }
   for (const e of t.events) {
     const n = nodes.get(e.id),
-      color = e.kind === 'fact' ? '#347bd0' : '#16897c',
-      short = e.description.length > 21 ? e.description.slice(0, 20) + '…' : e.description;
-    svg += `<g class="node" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="6" fill="${e.kind === 'fact' ? '#f1f6fc' : '#eff8f6'}"/><text class="event-label" x="${n.x - 62}" y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}" stroke="#e3eaf2"/><circle cx="${n.x}" cy="${n.y}" r="20" fill="transparent"/><circle class="event-circle" cx="${n.x}" cy="${n.y}" r="8" fill="${e.done ? color : '#fff'}" stroke="${color}" stroke-width="2"/>${e.done ? `<path d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4" fill="none" stroke="#fff" stroke-width="1.4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle cx="${n.x + 25}" cy="${n.y}" r="13" fill="transparent"/><circle cx="${n.x + 25}" cy="${n.y}" r="6" fill="#fff" stroke="#b4cce6"/><text x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" fill="#7d9ab8" font-size="11">+</text></g>`;
+      short = e.description.length > 21 ? e.description.slice(0, 20) + '…' : e.description,
+      // Arabic labels start at the right edge of their box and run leftward.
+      labelAt = isRtl(e.description) ? `direction="rtl" x="${n.x + 62}"` : `x="${n.x - 62}"`;
+    svg += `<g class="node" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
     ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
   return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit ${esc(t.name)} timeline">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
+const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
+  money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
+const STATUS = {
+  overdue: ['c-bad', (s) => `${s.overdue} overdue`],
+  'on-track': ['c-good', () => 'On track'],
+  idle: ['c-hold', () => 'No open actions'],
+};
+function statusChip(p) {
+  const s = projectStatus(p, today()),
+    [cls, text] = STATUS[s.key];
+  return `<span class="chip ${cls}">${text(s)}</span>`;
+}
 function render() {
   hideHover();
-  const p = project(),
-    events = p.tasks.flatMap((t) => t.events);
-  $('project-title').textContent = p.name;
-  $('project-description').textContent = p.description || 'Your project history, in one place.';
-  renderOverview(p);
-  $('total-count').textContent = p.tasks.length;
-  $('events-count').textContent = events.filter((e) => e.kind === 'fact').length;
-  $('upcoming-count').textContent = events.filter((e) => e.kind === 'action' && !e.done).length;
-  $('completed-count').textContent = events.filter((e) => e.kind === 'action' && e.done).length;
-  $('task-count').textContent = p.tasks.length + ' tasks';
+  ensureActive();
+  renderRail();
+  $('portfolio-view').hidden = view !== 'portfolio';
+  $('project-view').hidden = view !== 'project';
+  if (view === 'portfolio') renderPortfolio();
+  else renderProject();
+}
+function renderRail() {
+  const now = today();
+  if (view === 'portfolio') $('portfolio-nav').setAttribute('aria-current', 'page');
+  else $('portfolio-nav').removeAttribute('aria-current');
+  $('portfolio-count').textContent = data.projects.length;
   $('project-nav').innerHTML = data.projects
     .map(
-      (x) =>
-        `<button class="project-link ${x.id === active ? 'selected' : ''}" data-project="${x.id}">${esc(x.name)}</button>`,
+      (p) =>
+        `<a class="project-link" href="#/project/${p.id}"${view === 'project' && p.id === active ? ' aria-current="page"' : ''}><i class="${STATUS[projectStatus(p, now).key][0]}"></i><span dir="auto">${esc(p.name)}</span></a>`,
     )
     .join('');
-  const labelWidth = innerWidth < 700 ? 150 : 205,
-    width = Math.max(240, $('viewport').clientWidth - labelWidth);
-  $('timeline-content').style.width = '100%';
+}
+function spark({ done, open }) {
+  const total = done + open;
+  if (!total) return '<span class="muted">No events</span>';
+  const n = Math.min(total, 7),
+    filled = Math.round((done / total) * n);
+  let dots = '';
+  for (let i = 0; i < n; i++) {
+    const x = 5 + i * 16.5;
+    dots +=
+      i < filled
+        ? `<circle class="sd" cx="${x}" cy="7" r="3.5"/>`
+        : `<circle class="so" cx="${x}" cy="7" r="3.2"/>`;
+  }
+  return `<svg class="spark" viewBox="0 0 110 14" role="img" aria-label="${done} finished, ${open} open"><path class="sl" d="M4 7h102"/>${dots}</svg>`;
+}
+function kpi(label, value, note, cls = '') {
+  return `<div><span class="label">${label}</span><strong class="${cls}">${value}</strong><small>${note}</small></div>`;
+}
+function renderPortfolio() {
+  const now = today(),
+    projects = data.projects,
+    statuses = projects.map((p) => projectStatus(p, now)),
+    open = statuses.reduce((n, s) => n + s.open, 0),
+    overdue = statuses.reduce((n, s) => n + s.overdue, 0),
+    lateProjects = statuses.filter((s) => s.overdue).length,
+    soon = dueSoon(projects, now),
+    values = contractValue(projects),
+    valued = projects.filter((p) => Number.isFinite(p.details?.value)).length;
+  $('today-label').textContent = new Date(now + 'T12:00:00Z').toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  $('kpis').innerHTML =
+    kpi(
+      'Projects',
+      projects.length,
+      lateProjects ? `${plural(lateProjects, 'project')} with overdue actions` : 'None overdue',
+    ) +
+    kpi('Open actions', open, `${soon.filter((x) => !x.late).length} due in the next 7 days`) +
+    kpi(
+      'Overdue actions',
+      overdue,
+      overdue ? `Across ${plural(lateProjects, 'project')}` : 'Nothing overdue',
+      overdue ? 'bad' : '',
+    ) +
+    kpi(
+      'Contract value',
+      values.length ? values.map((v) => esc(money(v.total, v.currency))).join('<br>') : '—',
+      values.length
+        ? `Excl. VAT · ${valued} of ${plural(projects.length, 'project')}`
+        : 'Add values in project details',
+    );
+  $('project-table').innerHTML =
+    '<div class="prow head"><span class="label">Project</span><span class="label">Status</span><span class="label">Next action</span><span class="label">History</span><span class="label end">Value excl. VAT</span></div>' +
+    projects
+      .map((p) => {
+        const d = p.details || {},
+          next = nextAction(p),
+          late = next && day(next.event.scheduled) < day(now);
+        return (
+          `<a class="prow" href="#/project/${p.id}"><div class="nm"><b dir="auto">${esc(p.name)}</b><span dir="auto">${esc(d.customer || p.description || '')}</span></div>` +
+          `<span>${statusChip(p)}</span>` +
+          `<div class="nx">${next ? `<b class="${late ? 'late' : ''}" dir="auto">${esc(next.event.description)}</b><span><bdi>${esc(next.task.name)}</bdi> · ${late ? 'was due' : 'due'} ${dateLabel(next.event.scheduled)}</span>` : '<span>No open actions</span>'}</div>` +
+          spark(historyCounts(p)) +
+          `<div class="val">${Number.isFinite(d.value) ? `${number(d.value)}<small>${esc(d.currency || '')}</small>` : '<small>Not set</small>'}</div></a>`
+        );
+      })
+      .join('');
+  $('due-count').textContent = soon.length ? plural(soon.length, 'action') : '';
+  $('due-list').innerHTML = soon.length
+    ? soon
+        .map((x) => {
+          const [dd, mon] = shortDate(x.event.scheduled).split(' '),
+            lateBy = day(now) - day(x.event.scheduled);
+          return `<a class="d${x.late ? ' late' : ''}" href="#/project/${x.project.id}"><span class="dt"><b>${dd}</b>${mon}</span><div><bdi>${esc(x.event.description)}</bdi><span><bdi>${esc(x.project.name)}</bdi> · <bdi>${esc(x.task.name)}</bdi>${x.late ? ` · ${plural(lateBy, 'day')} late` : ''}</span></div></a>`;
+        })
+        .join('')
+    : '<p class="empty">Nothing is due in the next 7 days.</p>';
+}
+function renderProject() {
+  const p = project(),
+    d = p.details || {},
+    events = p.tasks.flatMap((t) => t.events);
+  $('crumb-project').textContent = p.name;
+  $('project-title').textContent = p.name;
+  $('project-ref').textContent = d.customer || '';
+  $('project-status').innerHTML = statusChip(p);
+  $('project-description').textContent = p.description || '';
+  renderOverview(p);
+  renderNext(p);
+  $('task-count').textContent =
+    `${plural(p.tasks.length, 'task')} · ${plural(events.length, 'event')}`;
+  const width = Math.max(240, $('viewport').clientWidth - 36);
   $('timeline-content').innerHTML = p.tasks.length
     ? p.tasks
         .map(
           (t) =>
-            `<div class="task-row"><div class="task-label"><div class="task-name">${esc(t.name)}</div><div class="task-meta">${t.events.length} events · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</div></div>${taskMarkup(t, width)}</div>`,
+            `<div class="task-row"><div class="task-label"><span class="task-name" dir="auto">${esc(t.name)}</span><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span></div>${taskMarkup(t, width)}</div>`,
         )
         .join('')
     : '<div class="empty-task">No tasks yet. Add a task to start its timeline.</div>';
   $('undo').disabled = !undoStack.length;
   $('redo').disabled = !redoStack.length;
 }
-const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
-  money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
 function renderOverview(p) {
   const d = p.details || {},
     totals = projectTotals(d),
     terms = d.paymentTerms || [],
-    termsSum = termsPercent(d);
+    sum = termsPercent(d);
   if (!d.customer && !d.scope && totals.value === null && !terms.length) {
     $('overview').innerHTML =
-      '<div class="overview-empty"><div><strong>Project overview</strong><span>Add the customer, scope, value, VAT rate and payment terms.</span></div><button class="button" data-edit-project>Add project details</button></div>';
-    return;
+      '<div class="tblock-empty"><p>Add the customer, scope, value, VAT rate and payment terms to see the commercial summary here.</p><button class="button small" data-edit-project>Add project details</button></div>';
+  } else {
+    const cell = (label, value, note, cls = '') =>
+      `<div><span class="label">${label}</span><strong class="${cls}" dir="auto">${value}</strong><small>${note}</small></div>`;
+    $('overview').innerHTML =
+      cell('Customer', esc(d.customer || 'Not set'), '', d.customer ? 'text' : 'unset') +
+      cell('Scope', esc(d.scope || 'Not set'), '', d.scope ? 'text' : 'unset') +
+      cell(
+        'Value excl. VAT',
+        esc(money(totals.value, d.currency)),
+        d.currency ? esc(d.currency) : 'Currency not set',
+        totals.value === null ? 'unset' : '',
+      ) +
+      cell(
+        'VAT',
+        totals.rate === null ? 'Rate not set' : esc(money(totals.vat, d.currency)),
+        totals.rate === null ? 'Add a rate to calculate' : `${number(totals.rate)}% rate`,
+        totals.rate === null ? 'unset' : '',
+      ) +
+      cell(
+        'Total incl. VAT',
+        esc(money(totals.total, d.currency)),
+        totals.total === null ? 'Needs a value and VAT rate' : 'Calculated automatically',
+        totals.total === null ? 'unset' : '',
+      );
   }
-  const rate = totals.rate === null ? 'VAT rate not set' : `VAT rate ${number(totals.rate)}%`,
-    termRows = terms
-      .map(
-        (t) =>
-          `<li><div><strong>${esc(t.label || 'Payment')}</strong><span>${esc(t.condition || '')}</span></div><b>${t.percent === null || t.percent === undefined ? '—' : number(t.percent) + '%'}</b></li>`,
-      )
-      .join('');
-  $('overview').innerHTML =
-    `<div class="overview-stats"><div><span>Value excl. VAT</span><strong>${esc(money(totals.value, d.currency))}</strong><small>${d.currency ? 'Currency ' + esc(d.currency) : 'Currency not set'}</small></div>` +
-    `<div><span>VAT</span><strong>${esc(money(totals.vat, d.currency))}</strong><small>${rate}</small></div>` +
-    `<div><span>Total incl. VAT</span><strong>${esc(money(totals.total, d.currency))}</strong><small>${totals.total === null ? 'Needs a value and VAT rate' : 'Calculated automatically'}</small></div></div>` +
-    `<div class="overview-cards"><article class="overview-card"><h3>Project summary</h3><dl><dt>Customer</dt><dd>${esc(d.customer || '—')}</dd><dt>Scope of supply</dt><dd>${esc(d.scope || '—')}</dd></dl></article>` +
-    `<article class="overview-card"><h3>Payment terms</h3>${terms.length ? `<ul class="terms">${termRows}</ul>` : '<p class="muted">No payment terms yet.</p>'}` +
-    `${terms.length && termsSum !== 100 ? `<p class="terms-note">Payment terms add up to ${number(termsSum)}%, not 100%.</p>` : ''}</article></div>`;
+  $('terms-sum').textContent = terms.length ? `Adds up to ${number(sum)}%` : '';
+  $('terms-panel').innerHTML = terms.length
+    ? `<div class="bar" aria-hidden="true">${terms.map((t) => `<i style="width:${Math.max(0, t.percent || 0)}%"></i>`).join('')}${sum < 100 ? `<i class="rest" style="width:${100 - sum}%"></i>` : ''}</div>` +
+      terms
+        .map(
+          (t) =>
+            `<div class="term"><span class="t" dir="auto">${esc(t.label || 'Payment')}</span><b>${t.percent === null || t.percent === undefined ? '—' : number(t.percent) + '%'}</b><span dir="auto">${esc(t.condition || '')}</span></div>`,
+        )
+        .join('') +
+      (sum !== 100
+        ? `<p class="terms-note">Payment terms add up to ${number(sum)}%, not 100%.</p>`
+        : '')
+    : '<p class="empty">No payment terms yet. <button class="tb-edit" data-edit-project>Add them</button></p>';
 }
+function renderNext(p) {
+  const now = day(today()),
+    list = openActions(p).sort((a, b) => day(a.event.scheduled) - day(b.event.scheduled));
+  $('next-count').textContent = list.length ? `${list.length} open` : '';
+  $('next-actions').innerHTML = list.length
+    ? list
+        .slice(0, 5)
+        .map(({ task, event }) => {
+          const late = day(event.scheduled) < now,
+            moved = event.planned ? day(event.scheduled) - day(event.planned) : 0;
+          return `<button class="x${late ? ' late' : ''}" data-open-task="${task.id}" data-open-event="${event.id}"><i></i><b dir="auto">${esc(event.description)}</b><span class="when">${late ? 'Was due ' : ''}${dateLabel(event.scheduled)}</span><span><bdi>${esc(task.name)}</bdi>${moved ? ` · <span class="shift">moved ${moved > 0 ? '+' : '−'}${plural(Math.abs(moved), 'day')}</span>` : ''}</span></button>`;
+        })
+        .join('') +
+      (list.length > 5 ? `<p class="empty">And ${list.length - 5} more on the timeline.</p>` : '')
+    : '<p class="empty">No open actions in this project.</p>';
+}
+$('next-actions').onclick = (e) => {
+  const b = e.target.closest('[data-open-event]');
+  if (b) openEditor(b.dataset.openTask, b.dataset.openEvent, null, false, b);
+};
 function termRow(t = {}) {
   const row = document.createElement('div');
   row.className = 'term-row';
@@ -350,9 +528,9 @@ function openProject() {
   $('project-name').focus();
 }
 $('edit-project').onclick = openProject;
-$('overview').onclick = (e) => {
+document.addEventListener('click', (e) => {
   if (e.target.closest('[data-edit-project]')) openProject();
-};
+});
 $('project-form').oninput = syncProjectForm;
 $('add-term').onclick = () => {
   const row = termRow();
@@ -599,19 +777,16 @@ $('name-form').onsubmit = (e) => {
     } else project().tasks.push({ id: uid(), name, events: [], edges: [] });
   });
   $('name-dialog').close();
+  if (nameMode === 'project') location.hash = '#/project/' + active;
 };
-$('project-nav').onclick = (e) => {
-  const b = e.target.closest('[data-project]');
-  if (b) {
-    active = b.dataset.project;
-    viewZoom = {};
-    render();
-  }
-};
-$('projects-nav').onclick = () => {
-  viewZoom = {};
+$('new-project-main').onclick = () => openName('project');
+window.addEventListener('hashchange', () => {
+  if (focusedTask) closeTask();
+  closeEditor();
+  route();
   render();
-};
+  scrollTo(0, 0);
+});
 function insert(tid, index, anchor) {
   const t = taskBy(tid),
     [a, b] = t.edges[index],
@@ -729,7 +904,7 @@ function showHover(e) {
     ev = t.events.find((x) => x.id === node.dataset.event),
     r = node.getBoundingClientRect();
   $('hover-preview').innerHTML =
-    `<strong>${esc(ev.description)}</strong><span>${esc(t.name)} · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Due <b>${dateLabel(ev.scheduled)}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original due <b>${dateLabel(ev.planned)}</b></div>`}`;
+    `<strong dir="auto">${esc(ev.description)}</strong><span><bdi>${esc(t.name)}</bdi> · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Due <b>${dateLabel(ev.scheduled)}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original due <b>${dateLabel(ev.planned)}</b></div>`}`;
   $('hover-preview').hidden = false;
   const w = $('hover-preview').offsetWidth,
     h = $('hover-preview').offsetHeight;
@@ -750,9 +925,7 @@ function beginDrag(e) {
     const svg = port.closest('svg'),
       r = svg.getBoundingClientRect(),
       path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#248778');
-    path.setAttribute('stroke-width', '2');
+    path.setAttribute('class', 'drag-line');
     path.style.pointerEvents = 'none';
     svg.append(path);
     drag = {
@@ -905,7 +1078,7 @@ function showCalendar() {
     ? rows
         .map(
           ({ p, t, e, label }) =>
-            `<div class="calendar-entry"><span>${esc(p.name)} / ${esc(t.name)}</span><strong>${esc(e.description)}</strong><small>${label}${e.kind === 'action' ? ' · Due ' + dateLabel(e.scheduled) : ''}</small></div>`,
+            `<div class="calendar-entry"><span><bdi>${esc(p.name)}</bdi> / <bdi>${esc(t.name)}</bdi></span><strong dir="auto">${esc(e.description)}</strong><small>${label}${e.kind === 'action' ? ' · Due ' + dateLabel(e.scheduled) : ''}</small></div>`,
         )
         .join('')
     : '<p>No recorded events or active actions on this day.</p>';
@@ -1028,6 +1201,8 @@ $('confirm-import').onclick = () => {
   if (!incoming) return;
   if (focusedTask) closeTask();
   closeEditor();
+  view = 'portfolio';
+  history.replaceState(null, '', '#/portfolio');
   if (
     commit(() => {
       data = incoming;
@@ -1048,7 +1223,7 @@ window.addEventListener('storage', (e) => {
   data = incoming;
   undoStack = [];
   redoStack = [];
-  if (!data.projects.some((p) => p.id === active)) active = data.projects[0].id;
+  ensureActive();
   closeEditor();
   for (const id of ['delete-dialog', 'connection-dialog', 'import-dialog', 'project-dialog'])
     $(id).close();
@@ -1075,6 +1250,29 @@ $('recovery-download').onclick = () => {
   toast('Unreadable data downloaded');
 };
 $('recovery-dismiss').onclick = () => ($('recovery').hidden = true);
+// Colour mode: Auto follows the device; Day and Night are remembered on this device.
+const MODE_KEY = 'trackflow-mode';
+function applyMode(mode) {
+  if (mode !== 'day' && mode !== 'night') mode = 'auto';
+  if (mode === 'auto') delete document.documentElement.dataset.mode;
+  else document.documentElement.dataset.mode = mode;
+  document
+    .querySelectorAll('.mode-switch button')
+    .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch {}
+}
+document.querySelector('.mode-switch').onclick = (e) => {
+  const b = e.target.closest('button[data-mode]');
+  if (b) applyMode(b.dataset.mode);
+};
+try {
+  applyMode(localStorage.getItem(MODE_KEY));
+} catch {
+  applyMode('auto');
+}
+route();
 render();
 if (unreadable) {
   showRecovery();

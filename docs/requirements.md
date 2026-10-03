@@ -20,6 +20,10 @@ Connections cannot form loops. Reversing a displayed arrow changes relationship 
 
 ## Current experience
 
+The app opens on a portfolio of all projects. A project's status is derived from its actions: overdue when any open action is past its due date, on track when actions are open and none is overdue, and "no open actions" otherwise. "Due in the next 7 days" includes overdue actions. Contract value is summed per currency from each project's value excluding VAT.
+
+The visual design is Drawing office by day and Night shift by night (approved 3 October 2026). Auto follows the device's light or dark setting. The interface is in English; text the user types in Arabic displays right to left. Amounts use Latin currency codes such as "SAR" and Western digits, and dates use the Gregorian calendar.
+
 Each task starts at its own first event and opens fitted to its full history. A shared date ruler is not the default. Task zoom controls are local to each task. Mutations, undo and redo return the views to fit. A larger task workspace opens as a dialog and remains editable.
 
 Descriptions appear above the lines. Full details appear on hover and keyboard focus. Clicking opens an editor. Plus controls between nodes insert events; small node ports currently support adding, branching and merging. The latest request to remove most node-plus controls remains pending.

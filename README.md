@@ -6,6 +6,10 @@ TrackFlow is a personal project-history application. Each project contains conti
 
 ## Working prototype
 
+- Start on a portfolio of all projects: status, next action, history, value excluding VAT, and actions due in the next 7 days.
+- Work in a project workspace with a commercial title block, full-width task timelines, next actions and payment terms.
+- Switch between day and night modes, or follow the device setting.
+- Type in Arabic anywhere: names, descriptions and events display right to left. The interface itself is in English.
 - Create projects, tasks, recorded events and actions.
 - Edit a project overview: name, scope, customer, currency, value excluding VAT, VAT rate, automatically calculated VAT and total, and payment terms.
 - Export all projects to a backup file and import one back, with validation and undo.
@@ -21,7 +25,7 @@ TrackFlow is a personal project-history application. Each project contains conti
 - Undo and redo application changes within the current session.
 - View recorded events and active actions through an optional daily calendar.
 
-The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving. There is no build step or backend. Sample data is fictitious. Clearing browser storage removes local records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
+The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving. There is no build step or backend. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License, so the app makes no third-party requests. Sample data is fictitious. Clearing browser storage removes local records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
 
 ## Run locally
 
@@ -38,10 +42,8 @@ On Windows the command is usually `python` or `py` instead of `python3`. Open `h
 Node.js 22 or newer can run the regression checks:
 
 ```sh
-node --test tests/model.test.mjs
-node --check dist/app.mjs
-node --check dist/model.mjs
-node --check dist/sample.mjs
+node --test tests/*.test.mjs
+for f in dist/*.mjs; do node --check "$f"; done
 ```
 
 These checks verify date and graph behavior. They do not replace a browser usability review. Tests marked `todo` describe known defects awaiting an authorized fix; they are reported but do not fail the run.
