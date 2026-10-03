@@ -14,6 +14,8 @@ Add a short hover delay and improve preview appearance. Improve the overall UI i
 
 ## Editable project information
 
+**Partly implemented (3 October 2026):** project name, scope, customer, currency, value excluding VAT, configurable VAT rate, calculated VAT and total, and payment-term milestones with percentages and conditions. Still pending: project reference, customer contact, status, PO reference and date, quantities, payment periods and advance-payment fields, delivery, guarantees, letter of credit, notes, and a separate Project details view.
+
 Provide project creation and editing with the following approved field groups:
 
 | Group | Fields |
@@ -34,4 +36,4 @@ Show a compact overview above the task timelines, with fuller information under 
 
 ## Later milestones
 
-Dependable saving, backup/restore and recovery testing precede critical personal use. Later possibilities include search, attachments, reports, analysis and AI summaries. Multi-user organizations, roles, cross-device access and subscriptions require separate validation and release planning.
+Dependable saving, backup/restore and recovery testing precede critical personal use. Backup export/import, unreadable-data preservation and tab sync are now implemented; recovery testing with real usage remains. Later possibilities include search, attachments, reports, analysis and AI summaries. Multi-user organizations, roles, cross-device access and subscriptions require separate validation and release planning.

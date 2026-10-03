@@ -18,6 +18,19 @@ export const sample = {
       id: 'alpha',
       name: 'Project Alpha',
       description: 'Power transformer installation · 33/132 kV',
+      // Fictitious commercial details for demonstration only. No VAT rate is assumed.
+      details: {
+        customer: 'Example Industrial Customer',
+        scope: 'Supply, installation and testing of a 33/132 kV power transformer.',
+        currency: 'SAR',
+        value: 250000,
+        vatRate: null,
+        paymentTerms: [
+          { label: 'Advance payment', percent: 30, condition: 'On order confirmation' },
+          { label: 'Delivery payment', percent: 60, condition: 'Within 30 days of invoice' },
+          { label: 'Final payment', percent: 10, condition: 'On customer acceptance' },
+        ],
+      },
       tasks: [
         {
           id: 'drawings',

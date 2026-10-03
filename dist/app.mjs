@@ -7,11 +7,22 @@ import {
   validateTask,
   removeEvent,
   migrate,
+  checkData,
+  projectTotals,
+  termsPercent,
 } from './model.mjs';
 import { sample } from './sample.mjs';
 const $ = (id) => document.getElementById(id),
-  key = 'trackflow-prototype-v1',
-  uid = () => crypto.randomUUID();
+  key = 'trackflow-prototype-v1';
+function uid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  // randomUUID needs a secure context (HTTPS or localhost); getRandomValues does not.
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 15) | 64;
+  b[8] = (b[8] & 63) | 128;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 const esc = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -36,14 +47,39 @@ const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
-let data;
-try {
-  data = JSON.parse(localStorage.getItem(key)) || structuredClone(sample);
-  if (!Array.isArray(data.projects) || !data.projects.length) throw Error();
-} catch {
-  data = structuredClone(sample);
+function readStored(raw) {
+  const parsed = migrate(JSON.parse(raw)),
+    error = checkData(parsed);
+  if (error) throw Error(error);
+  return parsed;
 }
-migrate(data);
+// Keep a copy of unreadable saved data so later saves never destroy it.
+function keepUnreadable(raw) {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith(key + '.unreadable-') && localStorage.getItem(k) === raw) return true;
+    }
+    localStorage.setItem(`${key}.unreadable-${Date.now()}`, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+let data,
+  stored = null,
+  unreadable = null,
+  saveBlocked = false;
+try {
+  stored = localStorage.getItem(key);
+} catch {}
+try {
+  data = stored ? readStored(stored) : migrate(structuredClone(sample));
+} catch {
+  unreadable = stored;
+  saveBlocked = !keepUnreadable(stored);
+  data = migrate(structuredClone(sample));
+}
 let active = data.projects[0].id,
   editing = null,
   creating = null,
@@ -56,11 +92,17 @@ let active = data.projects[0].id,
   connection = null,
   viewZoom = {},
   undoStack = [],
-  redoStack = [];
+  redoStack = [],
+  pendingImport = null,
+  suppressClickUntil = 0;
 const geometry = new Map(),
   project = () => data.projects.find((p) => p.id === active),
   taskBy = (id) => project().tasks.find((t) => t.id === id);
 function save() {
+  if (saveBlocked) {
+    $('saved').textContent = 'Not saved';
+    return;
+  }
   try {
     localStorage.setItem(key, JSON.stringify(data));
     $('saved').textContent = 'Saved on this device';
@@ -76,8 +118,14 @@ function toast(s) {
   toastTimer = setTimeout(() => ($('toast').hidden = true), 5500);
 }
 function commit(fn) {
-  const snapshot = structuredClone(data),
+  const snapshot = structuredClone(data);
+  let error;
+  try {
     error = fn();
+  } catch (err) {
+    console.error(err);
+    error = 'Something went wrong, so this change was not saved.';
+  }
   if (error) {
     data = snapshot;
     render();
@@ -193,10 +241,11 @@ function render() {
     events = p.tasks.flatMap((t) => t.events);
   $('project-title').textContent = p.name;
   $('project-description').textContent = p.description || 'Your project history, in one place.';
+  renderOverview(p);
   $('total-count').textContent = p.tasks.length;
-  $('events-count').textContent = events.length;
+  $('events-count').textContent = events.filter((e) => e.kind === 'fact').length;
   $('upcoming-count').textContent = events.filter((e) => e.kind === 'action' && !e.done).length;
-  $('completed-count').textContent = events.filter((e) => e.done).length;
+  $('completed-count').textContent = events.filter((e) => e.kind === 'action' && e.done).length;
   $('task-count').textContent = p.tasks.length + ' tasks';
   $('project-nav').innerHTML = data.projects
     .map(
@@ -218,6 +267,134 @@ function render() {
   $('undo').disabled = !undoStack.length;
   $('redo').disabled = !redoStack.length;
 }
+const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
+  money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
+function renderOverview(p) {
+  const d = p.details || {},
+    totals = projectTotals(d),
+    terms = d.paymentTerms || [],
+    termsSum = termsPercent(d);
+  if (!d.customer && !d.scope && totals.value === null && !terms.length) {
+    $('overview').innerHTML =
+      '<div class="overview-empty"><div><strong>Project overview</strong><span>Add the customer, scope, value, VAT rate and payment terms.</span></div><button class="button" data-edit-project>Add project details</button></div>';
+    return;
+  }
+  const rate = totals.rate === null ? 'VAT rate not set' : `VAT rate ${number(totals.rate)}%`,
+    termRows = terms
+      .map(
+        (t) =>
+          `<li><div><strong>${esc(t.label || 'Payment')}</strong><span>${esc(t.condition || '')}</span></div><b>${t.percent === null || t.percent === undefined ? '—' : number(t.percent) + '%'}</b></li>`,
+      )
+      .join('');
+  $('overview').innerHTML =
+    `<div class="overview-stats"><div><span>Value excl. VAT</span><strong>${esc(money(totals.value, d.currency))}</strong><small>${d.currency ? 'Currency ' + esc(d.currency) : 'Currency not set'}</small></div>` +
+    `<div><span>VAT</span><strong>${esc(money(totals.vat, d.currency))}</strong><small>${rate}</small></div>` +
+    `<div><span>Total incl. VAT</span><strong>${esc(money(totals.total, d.currency))}</strong><small>${totals.total === null ? 'Needs a value and VAT rate' : 'Calculated automatically'}</small></div></div>` +
+    `<div class="overview-cards"><article class="overview-card"><h3>Project summary</h3><dl><dt>Customer</dt><dd>${esc(d.customer || '—')}</dd><dt>Scope of supply</dt><dd>${esc(d.scope || '—')}</dd></dl></article>` +
+    `<article class="overview-card"><h3>Payment terms</h3>${terms.length ? `<ul class="terms">${termRows}</ul>` : '<p class="muted">No payment terms yet.</p>'}` +
+    `${terms.length && termsSum !== 100 ? `<p class="terms-note">Payment terms add up to ${number(termsSum)}%, not 100%.</p>` : ''}</article></div>`;
+}
+function termRow(t = {}) {
+  const row = document.createElement('div');
+  row.className = 'term-row';
+  row.innerHTML =
+    '<label>Milestone<input class="term-label" maxlength="80" placeholder="e.g. Advance payment"></label>' +
+    '<label>Share (%)<input class="term-percent" type="number" min="0" max="100" step="0.01" inputmode="decimal"></label>' +
+    '<label class="term-condition-field">Condition<input class="term-condition" maxlength="160" placeholder="e.g. On order confirmation"></label>' +
+    '<button type="button" class="icon-button" data-remove-term aria-label="Remove payment term">×</button>';
+  row.querySelector('.term-label').value = t.label || '';
+  row.querySelector('.term-percent').value = t.percent ?? '';
+  row.querySelector('.term-condition').value = t.condition || '';
+  return row;
+}
+const numberField = (id) => ($(id).value.trim() === '' ? null : Number($(id).value));
+function readTerms() {
+  return [...$('terms-list').querySelectorAll('.term-row')]
+    .map((row) => ({
+      label: row.querySelector('.term-label').value.trim(),
+      percent:
+        row.querySelector('.term-percent').value.trim() === ''
+          ? null
+          : Number(row.querySelector('.term-percent').value),
+      condition: row.querySelector('.term-condition').value.trim(),
+    }))
+    .filter((t) => t.label || t.condition || t.percent !== null);
+}
+function syncProjectForm() {
+  const currency = $('project-currency').value.trim().toUpperCase(),
+    totals = projectTotals({
+      value: numberField('project-value'),
+      vatRate: numberField('project-vat-rate'),
+    }),
+    sum = termsPercent({ paymentTerms: readTerms() });
+  $('project-vat').textContent =
+    totals.rate === null ? 'Enter a VAT rate' : money(totals.vat, currency);
+  $('project-total').textContent = totals.total === null ? '—' : money(totals.total, currency);
+  $('terms-total').textContent = readTerms().length ? `Total ${number(sum)}%` : '';
+  $('terms-total').classList.toggle('over', sum > 100);
+}
+function openProject() {
+  const p = project(),
+    d = p.details || {};
+  $('project-name').value = p.name;
+  $('project-summary-input').value = p.description || '';
+  $('project-customer').value = d.customer || '';
+  $('project-scope').value = d.scope || '';
+  $('project-currency').value = d.currency || '';
+  $('project-value').value = d.value ?? '';
+  $('project-vat-rate').value = d.vatRate ?? '';
+  $('terms-list').replaceChildren(...(d.paymentTerms || []).map(termRow));
+  $('project-warning').hidden = true;
+  syncProjectForm();
+  $('project-dialog').showModal();
+  $('project-name').focus();
+}
+$('edit-project').onclick = openProject;
+$('overview').onclick = (e) => {
+  if (e.target.closest('[data-edit-project]')) openProject();
+};
+$('project-form').oninput = syncProjectForm;
+$('add-term').onclick = () => {
+  const row = termRow();
+  $('terms-list').append(row);
+  row.querySelector('.term-label').focus();
+  syncProjectForm();
+};
+$('terms-list').onclick = (e) => {
+  if (!e.target.closest('[data-remove-term]')) return;
+  e.target.closest('.term-row').remove();
+  syncProjectForm();
+};
+$('close-project').onclick = $('cancel-project').onclick = () => $('project-dialog').close();
+$('project-form').onsubmit = (e) => {
+  e.preventDefault();
+  const name = $('project-name').value.trim(),
+    terms = readTerms(),
+    sum = termsPercent({ paymentTerms: terms });
+  if (!name) return;
+  if (sum > 100) {
+    $('project-warning').textContent =
+      `Payment terms add up to ${number(sum)}%. They cannot exceed 100%.`;
+    $('project-warning').hidden = false;
+    return;
+  }
+  const id = active;
+  commit(() => {
+    const p = data.projects.find((x) => x.id === id);
+    p.name = name;
+    p.description = $('project-summary-input').value.trim();
+    p.details = {
+      customer: $('project-customer').value.trim(),
+      scope: $('project-scope').value.trim(),
+      currency: $('project-currency').value.trim().toUpperCase(),
+      value: numberField('project-value'),
+      vatRate: numberField('project-vat-rate'),
+      paymentTerms: terms,
+    };
+  });
+  $('project-dialog').close();
+  toast('Project details saved');
+};
 function renderTaskDialog() {
   const t = taskBy(focusedTask);
   if (!t) return;
@@ -331,6 +508,7 @@ $('event-form').onsubmit = (ev) => {
   const ctx = editing || creating,
     tid = ctx.tid;
   let result,
+    error,
     valid = commit(() => {
       const t = taskBy(tid);
       if (editing) {
@@ -345,7 +523,7 @@ $('event-form').onsubmit = (ev) => {
           triggered,
           planned: existing.kind === 'action' ? existing.planned : scheduled,
         });
-        return result.error;
+        return (error = result.error);
       }
       const from = t.events.find((e) => e.id === creating.from),
         to = t.events.find((e) => e.id === creating.to),
@@ -370,10 +548,10 @@ $('event-form').onsubmit = (ev) => {
         if (index >= 0) t.edges.splice(index, 1);
         t.edges.push([from.id, id, reverse], [id, to.id, reverse]);
       } else if (from) t.edges.push([from.id, id]);
-      return validateTask(t);
+      return (error = validateTask(t));
     });
   if (!valid) {
-    $('event-warning').textContent = 'This change was not saved. Check the dates and path order.';
+    $('event-warning').textContent = error || 'This change was not saved.';
     $('event-warning').hidden = false;
     return;
   }
@@ -485,6 +663,16 @@ function handleClick(e) {
     openEditor(target.dataset.task, target.dataset.event, null, false, target);
 }
 for (const container of [$('timeline-content'), $('task-dialog-content')]) {
+  container.addEventListener(
+    'click',
+    (e) => {
+      if (performance.now() >= suppressClickUntil) return;
+      suppressClickUntil = 0;
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true,
+  );
   container.addEventListener('click', handleClick);
   container.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -687,17 +875,9 @@ window.addEventListener('pointerup', (e) => {
   } else if (d.kind === 'move') {
     openEditor(d.tid, d.eid, null, false, d.node);
   }
-  if (d.moved || d.kind === 'move') {
-    const block = (ev) => {
-      ev.stopPropagation();
-      ev.preventDefault();
-    };
-    (d.surface === 'modal' ? $('task-dialog-content') : $('timeline-content')).addEventListener(
-      'click',
-      block,
-      { once: true, capture: true },
-    );
-  }
+  // Ignore the click the browser fires right after this pointerup. A time window, rather than a
+  // one-off listener, cannot swallow a later click when the pointer was released elsewhere.
+  if (d.moved || d.kind === 'move') suppressClickUntil = performance.now() + 400;
 });
 function showCalendar() {
   const date = $('calendar-date').value,
@@ -738,10 +918,12 @@ $('calendar-nav').onclick = () => {
 $('calendar-date').onchange = showCalendar;
 $('close-calendar').onclick = () => $('calendar-dialog').close();
 window.addEventListener('keydown', (e) => {
-  const typing = e.target.matches('input,textarea,select,[contenteditable]');
+  const typing = e.target.matches('input,textarea,select,[contenteditable]'),
+    dialogOpen = document.querySelector('dialog[open]:not(#task-dialog)');
   if (
     (e.ctrlKey || e.metaKey) &&
     !typing &&
+    !dialogOpen &&
     (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')
   ) {
     e.preventDefault();
@@ -792,5 +974,109 @@ window.addEventListener('resize', () => {
     if (focusedTask) renderTaskDialog();
   }, 120);
 });
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })),
+    a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$('export').onclick = () => {
+  download(
+    `trackflow-backup-${today()}.json`,
+    JSON.stringify({ app: 'TrackFlow', exportedAt: new Date().toISOString(), data }, null, 2),
+  );
+  toast('Backup downloaded. Keep the file somewhere safe.');
+};
+$('import').onclick = () => $('import-file').click();
+$('import-file').onchange = async () => {
+  const file = $('import-file').files[0];
+  $('import-file').value = '';
+  if (!file) return;
+  let incoming, reason;
+  try {
+    const parsed = JSON.parse(await file.text());
+    incoming = migrate(parsed?.app === 'TrackFlow' ? parsed.data : parsed);
+    reason = checkData(incoming);
+  } catch {
+    reason = 'It is not a TrackFlow backup file.';
+  }
+  if (reason) {
+    toast(`This file could not be imported. ${reason}`);
+    return;
+  }
+  pendingImport = incoming;
+  const tasks = incoming.projects.flatMap((p) => p.tasks),
+    events = tasks.flatMap((t) => t.events).length,
+    count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  $('import-summary').textContent =
+    `${file.name} contains ${count(incoming.projects.length, 'project')}, ${count(tasks.length, 'task')} and ${count(events, 'event')}. ` +
+    'Importing replaces everything currently saved in this browser. You can reverse it with Undo.';
+  $('import-dialog').showModal();
+};
+$('cancel-import').onclick = () => {
+  pendingImport = null;
+  $('import-dialog').close();
+};
+$('confirm-import').onclick = () => {
+  const incoming = pendingImport;
+  pendingImport = null;
+  $('import-dialog').close();
+  if (!incoming) return;
+  if (focusedTask) closeTask();
+  closeEditor();
+  if (
+    commit(() => {
+      data = incoming;
+      active = data.projects[0].id;
+    })
+  )
+    toast('Backup imported');
+};
+// Another tab saved: load its data so this tab cannot overwrite it with an older copy.
+window.addEventListener('storage', (e) => {
+  if (e.key !== key || !e.newValue) return;
+  let incoming;
+  try {
+    incoming = readStored(e.newValue);
+  } catch {
+    return;
+  }
+  data = incoming;
+  undoStack = [];
+  redoStack = [];
+  if (!data.projects.some((p) => p.id === active)) active = data.projects[0].id;
+  closeEditor();
+  for (const id of ['delete-dialog', 'connection-dialog', 'import-dialog', 'project-dialog'])
+    $(id).close();
+  if (focusedTask && !taskBy(focusedTask)) closeTask();
+  viewZoom = {};
+  render();
+  if (focusedTask) renderTaskDialog();
+  toast('Updated with changes made in another tab.');
+});
+function showRecovery() {
+  $('recovery-text').textContent = saveBlocked
+    ? 'Your saved TrackFlow data could not be read, so the sample project is shown instead. ' +
+      'This browser had no room to keep a safety copy, so changes will not be saved until you download the unreadable data.'
+    : 'Your saved TrackFlow data could not be read, so the sample project is shown instead. ' +
+      'A copy of the unreadable data has been kept in this browser and will not be overwritten. Download it and keep it safe; it may be recoverable.';
+  $('recovery').hidden = false;
+}
+$('recovery-download').onclick = () => {
+  download(`trackflow-unreadable-${today()}.json`, unreadable);
+  if (saveBlocked) {
+    saveBlocked = false;
+    save();
+  }
+  toast('Unreadable data downloaded');
+};
+$('recovery-dismiss').onclick = () => ($('recovery').hidden = true);
 render();
-save();
+if (unreadable) {
+  showRecovery();
+  if (saveBlocked) save();
+} else save();

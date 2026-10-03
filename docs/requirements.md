@@ -28,8 +28,14 @@ My calendar is an optional daily view across projects, showing recorded events a
 
 Ctrl+Z/Cmd+Z undo app changes; Ctrl+Shift+Z/Cmd+Shift+Z/Ctrl+Y redo them. Text fields retain native text undo. App undo history lasts for the current session.
 
+## Project overview
+
+Each project can hold optional commercial details shown above the task timelines: customer, scope of supply, currency, value excluding VAT, VAT rate and payment terms (milestone, percentage and condition). VAT and the total including VAT are calculated automatically, rounded to two decimals, and only once a VAT rate has been entered; no rate is assumed. Payment terms may not exceed 100% in total; a lower total is allowed and flagged. Projects saved before this feature have no details and keep working unchanged. The other approved field groups remain in the backlog.
+
 ## Persistence and limitations
 
-Projects are saved under the existing browser storage key. Migration preserves existing records: prior unfinished events become actions; prior completed events become recorded events. The owner can refine classification in the editor.
+Projects are saved under the existing browser storage key, with a schema version. Migration preserves existing records: prior unfinished events become actions; prior completed events become recorded events. The owner can refine classification in the editor.
 
-The current personal prototype has no shared account system, backend database, subscription billing or cross-device synchronization. Dates use calendar-day precision. Backup/restore, browser end-to-end verification and final visual refinement remain work items.
+Saved data that cannot be read is copied to a separate `.unreadable-` key and never overwritten; the app shows the sample project and offers the copy for download. Export writes all projects to a JSON backup file; import validates the file, asks for confirmation, replaces all data and can be undone. When another tab saves, open tabs load that data and clear their session undo history.
+
+The current personal prototype has no shared account system, backend database, subscription billing or cross-device synchronization. Dates use calendar-day precision. Automated browser end-to-end checks in CI and final visual refinement remain work items.
