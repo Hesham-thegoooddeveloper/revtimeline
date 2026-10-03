@@ -1,0 +1,22 @@
+name: Prototype checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify module syntax
+        run: |
+          node --check dist/app.mjs
+          node --check dist/model.mjs
+          node --check dist/sample.mjs
+      - name: Verify date and connection behavior
+        run: node --test tests/model.test.mjs
