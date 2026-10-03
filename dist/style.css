@@ -617,9 +617,14 @@ a {
   gap: 20px;
   align-items: start;
 }
+/* The table keeps readable columns and scrolls sideways inside its panel when space runs out. */
+.ptable {
+  overflow-x: auto;
+}
 .prow {
   display: grid;
-  grid-template-columns: minmax(0, 2.1fr) 120px minmax(0, 2fr) 116px 130px;
+  grid-template-columns: minmax(170px, 2fr) 136px minmax(190px, 2fr) 116px 112px;
+  min-width: 800px;
   gap: 16px;
   align-items: center;
   padding: 13px 18px;
@@ -1404,6 +1409,46 @@ legend {
 }
 
 /* Narrow windows: the rail moves to the top. Desktop is the main target. */
+/* Medium windows: the due list moves under the projects table, and the summary
+   figures and lower panels use fewer columns. */
+@media (max-width: 1320px) {
+  .portfolio-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1120px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kpis > div:nth-child(2n) {
+    border-inline-end: 0;
+  }
+  .kpis > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--tb);
+  }
+  .below {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Drop the history sparkline so project, status, next action and value all fit. */
+  .prow {
+    grid-template-columns: minmax(150px, 1.6fr) 124px minmax(170px, 2fr) 100px;
+    min-width: 600px;
+  }
+  .prow > :nth-child(4) {
+    display: none;
+  }
+  /* Title block: customer and scope on the first row, the three amounts on the second. */
+  .tblock {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tblock > div:nth-child(2):not(.tblock-empty) {
+    grid-column: span 2;
+    border-inline-end: 0;
+  }
+  .tblock > div:nth-child(-n + 2):not(.tblock-empty) {
+    border-bottom: 1px solid var(--tb);
+  }
+}
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;
@@ -1429,11 +1474,8 @@ legend {
     border-inline-end: 0;
     border-bottom: 1px solid var(--tb);
   }
-  .ptable {
-    overflow-x: auto;
-  }
-  .prow {
-    min-width: 760px;
+  .kpis > div:last-child {
+    border-bottom: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
