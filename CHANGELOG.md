@@ -1,5 +1,9 @@
 # Change log
 
+## Renamed to RevTimeline — 3 October 2026
+
+The product is now called RevTimeline, with the domain revtimeline.tech. "TrackFlow" was already used by several other products, including construction approval software. Saved data keeps its original storage keys, so existing projects and settings load unchanged. Backups are now labelled RevTimeline; older TrackFlow backups still import.
+
 ## New interface: Drawing office by day, Night shift by night — 3 October 2026
 
 Authorized by the owner after reviewing the design proposal. Not yet published.

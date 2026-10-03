@@ -1,6 +1,6 @@
 # Project charter
 
-**Working name:** TrackFlow. **Date:** 3 October 2026. **Stage:** core-concept validation through an interactive prototype.
+**Name:** RevTimeline (formerly TrackFlow), at revtimeline.tech. **Date:** 3 October 2026. **Stage:** core-concept validation through an interactive prototype.
 
 ## Problem and objective
 

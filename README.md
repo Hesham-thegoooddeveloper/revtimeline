@@ -1,6 +1,6 @@
-# TrackFlow
+# RevTimeline
 
-TrackFlow is a personal project-history application. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
+RevTimeline (formerly TrackFlow) is a project-history application. Every revision, every approval, in order. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
 
 **Current stage:** interactive prototype, iteration 02 plus the first part of the commercial project overview and data-safety work (see the [change log](CHANGELOG.md)). These changes are in this repository but have not been published to the live Site yet. The remaining project-information fields and the latest interaction changes are approved for later implementation.
 
@@ -71,6 +71,6 @@ The original handoff is a historical reference. Later decisions in the requireme
 
 `dist/` contains the served application source; it is intentionally tracked despite its directory name. `.openai/hosting.json` identifies the existing private hosted Site and contains no credentials. Keep the Site identity when continuing work on that same deployment.
 
-Live prototype: https://trackflow-task-history.supersimpleengineeri.chatgpt.site
+Planned home: https://revtimeline.tech (not yet live). Earlier prototype, still under the TrackFlow name: https://trackflow-task-history.supersimpleengineeri.chatgpt.site
 
-This baseline preserves the existing Git history. Future work should use descriptive commits and pull requests, with documentation updated alongside behavior changes. A GitHub commit alone does not mean the live Site has been republished.
+The repository starts from the browser upload of the baseline; earlier commits mentioned in the change log were not uploaded. Future work should use descriptive commits and pull requests, with documentation updated alongside behavior changes. A GitHub commit alone does not mean the live Site has been republished.

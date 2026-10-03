@@ -67,7 +67,7 @@ function checkDetails(d) {
 }
 export function checkData(data) {
   if (!Array.isArray(data?.projects) || !data.projects.length) return 'It contains no projects.';
-  if (data.schemaVersion > SCHEMA_VERSION) return 'It was saved by a newer version of TrackFlow.';
+  if (data.schemaVersion > SCHEMA_VERSION) return 'It was saved by a newer version of RevTimeline.';
   const projects = new Set();
   for (const p of data.projects) {
     if (!validId(p?.id) || projects.has(p.id) || typeof p.name !== 'string')

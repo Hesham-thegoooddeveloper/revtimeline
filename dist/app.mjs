@@ -21,7 +21,10 @@ import {
   historyCounts,
 } from './portfolio.mjs';
 const $ = (id) => document.getElementById(id),
-  key = 'trackflow-prototype-v1';
+  // Storage keys keep the original TrackFlow names so existing saved data is still found.
+  key = 'trackflow-prototype-v1',
+  // Backups exported before the rename are labelled TrackFlow.
+  BACKUP_APPS = ['RevTimeline', 'TrackFlow'];
 function uid() {
   if (crypto.randomUUID) return crypto.randomUUID();
   // randomUUID needs a secure context (HTTPS or localhost); getRandomValues does not.
@@ -1159,8 +1162,8 @@ function download(name, text) {
 }
 $('export').onclick = () => {
   download(
-    `trackflow-backup-${today()}.json`,
-    JSON.stringify({ app: 'TrackFlow', exportedAt: new Date().toISOString(), data }, null, 2),
+    `revtimeline-backup-${today()}.json`,
+    JSON.stringify({ app: 'RevTimeline', exportedAt: new Date().toISOString(), data }, null, 2),
   );
   toast('Backup downloaded. Keep the file somewhere safe.');
 };
@@ -1172,10 +1175,10 @@ $('import-file').onchange = async () => {
   let incoming, reason;
   try {
     const parsed = JSON.parse(await file.text());
-    incoming = migrate(parsed?.app === 'TrackFlow' ? parsed.data : parsed);
+    incoming = migrate(BACKUP_APPS.includes(parsed?.app) ? parsed.data : parsed);
     reason = checkData(incoming);
   } catch {
-    reason = 'It is not a TrackFlow backup file.';
+    reason = 'It is not a RevTimeline backup file.';
   }
   if (reason) {
     toast(`This file could not be imported. ${reason}`);
@@ -1235,14 +1238,14 @@ window.addEventListener('storage', (e) => {
 });
 function showRecovery() {
   $('recovery-text').textContent = saveBlocked
-    ? 'Your saved TrackFlow data could not be read, so the sample project is shown instead. ' +
+    ? 'Your saved RevTimeline data could not be read, so the sample project is shown instead. ' +
       'This browser had no room to keep a safety copy, so changes will not be saved until you download the unreadable data.'
-    : 'Your saved TrackFlow data could not be read, so the sample project is shown instead. ' +
+    : 'Your saved RevTimeline data could not be read, so the sample project is shown instead. ' +
       'A copy of the unreadable data has been kept in this browser and will not be overwritten. Download it and keep it safe; it may be recoverable.';
   $('recovery').hidden = false;
 }
 $('recovery-download').onclick = () => {
-  download(`trackflow-unreadable-${today()}.json`, unreadable);
+  download(`revtimeline-unreadable-${today()}.json`, unreadable);
   if (saveBlocked) {
     saveBlocked = false;
     save();
