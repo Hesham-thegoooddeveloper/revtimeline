@@ -13,7 +13,7 @@ Do not implement the changes in `docs/backlog.md` until the owner authorizes the
 5. Update the requirements, backlog and change log to match what actually shipped.
 6. Open a pull request describing the problem, resulting behavior, checks and relevant limitations.
 7. Merge only when the owner authorizes that implementation. Record a milestone tag when appropriate.
-8. Publish the approved source to the existing Site through its deployment workflow, and verify deployment success before reporting the live result.
+8. Merge into `main` to publish: the Publish site workflow deploys to https://revtimeline.tech. Check that the workflow succeeded and the live site works before reporting the result.
 
 Do not commit tokens, credentials, local browser exports containing real project data, or unrelated files. Keep fictitious test data separate from actual projects. A commit or pull request does not itself prove deployment or usability.
 
