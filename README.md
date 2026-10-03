@@ -1,12 +1,20 @@
-# TrackFlow
+# RevTimeline
 
-TrackFlow is a personal project-history application. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
+RevTimeline (formerly TrackFlow) is a project-history application. Every revision, every approval, in order. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
 
-**Current stage:** interactive prototype, iteration 02. The deployed interface remains unchanged while this repository baseline is prepared. The commercial project overview and the latest interaction changes are approved for later implementation; they are not part of the working app yet.
+**Current stage:** interactive prototype, iteration 02 plus the first part of the commercial project overview and data-safety work (see the [change log](CHANGELOG.md)). These changes are in this repository but have not been published to the live Site yet. The remaining project-information fields and the latest interaction changes are approved for later implementation.
 
 ## Working prototype
 
+- Start on a portfolio of all projects: status, next action, history, value excluding VAT, and actions due in the next 7 days.
+- Work in a project workspace with a commercial title block, full-width task timelines, next actions and payment terms.
+- Switch between day and night modes, or follow the device setting.
+- Type in Arabic anywhere: names, descriptions and events display right to left. The interface itself is in English.
 - Create projects, tasks, recorded events and actions.
+- Edit a project overview: name, scope, customer, currency, value excluding VAT, VAT rate, automatically calculated VAT and total, and payment terms.
+- Export all projects to a backup file and import one back, with validation and undo.
+- Keep a safety copy of saved data that cannot be read, instead of overwriting it.
+- Keep several open tabs in sync with each other.
 - View each task from its own start, automatically fitted to its available width.
 - Inspect full event details on hover and edit through a popup.
 - Insert an event between connected events, create branches and merge paths.
@@ -17,7 +25,7 @@ TrackFlow is a personal project-history application. Each project contains conti
 - Undo and redo application changes within the current session.
 - View recorded events and active actions through an optional daily calendar.
 
-The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving. There is no build step or backend. Sample data is fictitious. Clearing browser storage removes local records; the prototype is not yet a dependable archive for important project information.
+The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving. There is no build step or backend. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License, so the app makes no third-party requests. Sample data is fictitious. Clearing browser storage removes local records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
 
 ## Run locally
 
@@ -27,20 +35,24 @@ From the repository root:
 python3 -m http.server 8080 --directory dist
 ```
 
-Open `http://localhost:8080`. Use an HTTP server rather than opening the HTML directly, because the app loads JavaScript modules.
+On Windows the command is usually `python` or `py` instead of `python3`. Open `http://localhost:8080`. Use an HTTP server rather than opening the HTML directly, because the app loads JavaScript modules.
 
 ## Validate
 
 Node.js 22 or newer can run the regression checks:
 
 ```sh
-node --test tests/model.test.mjs
-node --check dist/app.mjs
-node --check dist/model.mjs
-node --check dist/sample.mjs
+node --test tests/*.test.mjs
+for f in dist/*.mjs; do node --check "$f"; done
 ```
 
-These checks verify date and graph behavior. They do not replace a browser usability review.
+These checks verify date and graph behavior. They do not replace a browser usability review. Tests marked `todo` describe known defects awaiting an authorized fix; they are reported but do not fail the run.
+
+Source files use Prettier formatting, which CI also checks:
+
+```sh
+npx prettier@3.9.9 --check "dist/*.mjs" dist/style.css "tests/*.mjs"
+```
 
 ## Project records
 
@@ -57,8 +69,10 @@ The original handoff is a historical reference. Later decisions in the requireme
 
 ## Source and deployment
 
-`dist/` contains the served application source; it is intentionally tracked despite its directory name. `.openai/hosting.json` identifies the existing private hosted Site and contains no credentials. Keep the Site identity when continuing work on that same deployment.
+`dist/` contains the served application source; it is intentionally tracked despite its directory name.
 
-Live prototype: https://trackflow-task-history.supersimpleengineeri.chatgpt.site
+The site is published with GitHub Pages at https://revtimeline.tech. The `Publish site` workflow (`.github/workflows/pages.yml`) runs the checks and publishes `dist/` whenever `main` changes; work on other branches is not published. The domain is registered at Hostinger, whose DNS points it to GitHub Pages.
 
-This baseline preserves the existing Git history. Future work should use descriptive commits and pull requests, with documentation updated alongside behavior changes. A GitHub commit alone does not mean the live Site has been republished.
+The earlier prototype, under the TrackFlow name, remains at https://trackflow-task-history.supersimpleengineeri.chatgpt.site (configured by `.openai/hosting.json`, which contains no credentials).
+
+The repository starts from the browser upload of the baseline; earlier commits mentioned in the change log were not uploaded. Future work should use descriptive commits and pull requests, with documentation updated alongside behavior changes. A change is live only after it is merged into `main` and the Publish site workflow succeeds.

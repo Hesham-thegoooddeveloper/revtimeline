@@ -1,6 +1,6 @@
 # Project charter
 
-**Working name:** TrackFlow. **Date:** 3 October 2026. **Stage:** core-concept validation through an interactive prototype.
+**Name:** RevTimeline (formerly TrackFlow), at revtimeline.tech. **Date:** 3 October 2026. **Stage:** core-concept validation through an interactive prototype.
 
 ## Problem and objective
 
@@ -20,8 +20,8 @@ Proposed measures: time to record an event, time to reconstruct a task history, 
 |---|---|---|
 | Discovery | Task-history model and interaction requirements | Completed for initial prototype |
 | Prototype | Working timelines, branches, dates and navigation | Iteration 02 deployed |
-| Core refinement | Latest owner feedback and approved project overview | Approved changes pending |
-| Personal MVP | Refined interaction, backup/restore and dependable saving | Not started |
+| Core refinement | Latest owner feedback and approved project overview | Overview started; other approved changes pending |
+| Personal MVP | Refined interaction, backup/restore and dependable saving | Backup/restore and safer saving implemented |
 | Personal validation | Real usage evidence and lessons learned | Pending |
 | Productization decision | External validation, architecture and operating costs | Later |
 | Subscription product | Accounts, shared projects, permissions and billing | Later |

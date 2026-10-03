@@ -1,16 +1,295 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TrackFlow — Task Timelines</title><meta name="description" content="Track the history of your projects, one event at a time."><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="style.css"></head>
-<body>
-<aside class="sidebar"><a class="brand" href="./"><span class="brand-symbol">▦</span> TrackFlow</a><div class="workspace-label">PERSONAL WORKSPACE</div><button class="nav active" id="projects-nav"><span>▤</span> Projects</button><button class="nav" id="calendar-nav"><span>▦</span> My calendar</button><div class="project-nav" id="project-nav"></div><button class="new-project" id="new-project">＋ New project</button><div class="sidebar-bottom"><span class="avatar">PM</span><div>Your workspace<small>Personal prototype</small></div></div></aside>
-<main><header class="topbar"><span class="breadcrumb">Workspace <span>/</span> Projects</span><span class="saved" id="saved">Saved on this device</span></header>
-<section class="project-header"><div><div class="eyebrow">PROJECT WORKSPACE</div><h1 id="project-title"></h1><p id="project-description"></p></div><button class="button primary" id="add-task">＋ Add task</button></section>
-<section class="summary" aria-label="Project summary"><div><span>Total tasks</span><strong id="total-count">0</strong></div><div><span>Recorded events</span><strong id="events-count">0</strong></div><div><span>Upcoming events</span><strong id="upcoming-count">0</strong></div><div><span>Completed events</span><strong id="completed-count">0</strong></div></section>
-<section class="timeline-section"><div class="section-heading"><div class="section-title">Timeline <span id="task-count"></span></div><div class="legend"><span><i class="done-dot"></i> Done</span><span><i class="open-dot"></i> Upcoming</span></div></div><div class="toolbar"><div class="toolbar-left"><button class="button" id="undo" aria-label="Undo last action">↶ Undo</button><button class="button" id="redo" aria-label="Redo last action">↷ Redo</button><button class="button" id="fit">Fit view</button><button class="button" id="pan" aria-pressed="false">Hand tool</button></div></div>
-<div class="timeline-viewport" id="viewport"><div class="timeline-content" id="timeline-content"></div></div><div class="timeline-footer"><span>Hover for full details · Click to edit · Drag from a connection point to branch</span><span>Ctrl+Z to undo</span></div></section>
-<div class="notice">Changes stay in this browser · Blue: recorded events · Teal: actions · Original due dates stay in event details.</div>
-</main>
-<div id="editor-backdrop" class="backdrop" hidden></div><section id="editor" class="event-popup" role="dialog" aria-modal="true" aria-labelledby="editor-title" hidden><div class="popup-heading"><h2 id="editor-title">Event details</h2><button class="icon-button" id="close-editor" aria-label="Close event details">×</button></div><form id="event-form"><label>Event type<select id="event-kind"><option value="fact">Recorded event — something happened</option><option value="action">Action — something to do</option></select></label><label>Description<textarea id="event-description" rows="3" required placeholder="What happened, or what needs to happen?"></textarea></label><label id="done-field" class="check-label"><input id="event-done" type="checkbox"> Completed</label><div class="date-fields"><label><span id="date-label">Occurrence date</span><input type="date" id="event-date" required></label><label id="trigger-field">Trigger date<input type="date" id="event-trigger"></label><label id="due-field">Due date<input type="date" id="event-due"></label><label id="plan-field">Original due date<input type="date" id="event-plan" readonly></label></div><p class="popup-meta" id="event-meta"></p><label id="branch-field" class="check-label"><input type="checkbox" id="event-branch"> Create a parallel branch</label><p id="event-warning" class="warning" hidden></p><div class="popup-actions"><button type="button" id="delete-event" class="button danger">Delete</button><button type="submit" class="button primary">Save event</button></div></form></section>
-<dialog id="name-dialog"><form id="name-form"><div class="popup-heading"><h2 id="name-title">New task</h2><button class="icon-button" type="button" id="close-name" aria-label="Close">×</button></div><label>Name<input id="name-input" required maxlength="80"></label><label id="description-field">Description<input id="name-description" maxlength="180"></label><div class="popup-actions"><button class="button primary" type="submit">Create</button></div></form></dialog>
-<dialog id="delete-dialog"><h2>Delete this event?</h2><p>The event and its connections will be removed.</p><div class="popup-actions"><button class="button" id="cancel-delete">Cancel</button><button class="button danger" id="confirm-delete">Delete event</button></div></dialog>
-<dialog id="task-dialog" class="task-dialog"><div class="popup-heading"><div><div class="eyebrow">TASK WORKSPACE</div><h2 id="task-dialog-title"></h2></div><button class="icon-button" id="close-task" aria-label="Close task workspace">×</button></div><div id="task-dialog-content"></div></dialog><dialog id="calendar-dialog" class="calendar-dialog"><div class="popup-heading"><h2>My calendar</h2><button class="icon-button" id="close-calendar" aria-label="Close calendar">×</button></div><label>Day<input id="calendar-date" type="date"></label><div id="calendar-results"></div></dialog><dialog id="connection-dialog"><div class="popup-heading"><h2>Connection direction</h2><button class="icon-button" id="close-connection" aria-label="Close connection">×</button></div><p id="connection-summary"></p><p>Arrow direction changes the relationship shown, without moving event dates.</p><button class="button primary" id="reverse-connection">Reverse arrow</button></dialog><div id="hover-preview" role="tooltip" hidden></div><div id="toast" role="status" aria-live="polite" hidden></div><script type="module" src="app.mjs"></script>
-</body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>RevTimeline</title>
+    <meta name="description" content="Track the history of your projects, one event at a time." />
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply the saved colour mode before the first paint to avoid a flash.
+      try {
+        const mode = localStorage.getItem('trackflow-mode');
+        if (mode === 'day' || mode === 'night') document.documentElement.dataset.mode = mode;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail" aria-label="Main menu">
+        <a class="logo" href="#/portfolio" aria-label="RevTimeline portfolio">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path class="logo-line" d="M2 8h20M6 8c4 0 4 9 9 9h7" />
+            <circle class="logo-start" cx="6" cy="8" r="2.6" />
+            <circle class="logo-end" cx="19" cy="17" r="2.6" />
+          </svg>
+          RevTimeline
+        </a>
+        <nav class="rail-nav">
+          <a class="rail-link" id="portfolio-nav" href="#/portfolio">
+            Portfolio <span class="n" id="portfolio-count"></span>
+          </a>
+          <button class="rail-link" id="calendar-nav">Calendar</button>
+        </nav>
+        <div class="rail-group">
+          <span class="label">Projects</span>
+          <button class="rail-add" id="new-project" aria-label="New project" title="New project">
+            +
+          </button>
+        </div>
+        <div class="project-nav" id="project-nav"></div>
+        <div class="rail-foot">
+          <div class="mode-switch" role="group" aria-label="Colour mode">
+            <button data-mode="auto" title="Follow this device's setting">Auto</button>
+            <button data-mode="day">Day</button>
+            <button data-mode="night">Night</button>
+          </div>
+          <div class="me">
+            <span class="avatar" aria-hidden="true">PM</span>
+            <div>Your workspace<small id="saved">Saved on this device</small></div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div id="recovery" class="recovery" role="alert" hidden>
+          <p id="recovery-text"></p>
+          <button class="button small" id="recovery-download">Download unreadable data</button>
+          <button class="icon-button" id="recovery-dismiss" aria-label="Dismiss message">×</button>
+        </div>
+
+        <section id="portfolio-view" class="view" aria-labelledby="portfolio-title" hidden>
+          <div class="page-head">
+            <div>
+              <span class="label" id="today-label"></span>
+              <h1 id="portfolio-title">Portfolio</h1>
+            </div>
+            <div class="actions">
+              <button class="button" id="import" title="Replace all projects with a backup file">
+                Import backup
+              </button>
+              <button class="button" id="export" title="Download a backup file of all projects">
+                Export backup
+              </button>
+              <button class="button primary" id="new-project-main">+ New project</button>
+              <input type="file" id="import-file" accept="application/json,.json" hidden />
+            </div>
+          </div>
+          <div class="kpis" id="kpis"></div>
+          <div class="portfolio-grid">
+            <section class="panel" aria-labelledby="projects-heading">
+              <div class="panel-head"><h2 id="projects-heading">Projects</h2></div>
+              <div class="ptable" id="project-table"></div>
+            </section>
+            <section class="panel" aria-labelledby="due-heading">
+              <div class="panel-head">
+                <h2 id="due-heading">Due in the next 7 days</h2>
+                <span class="muted" id="due-count"></span>
+              </div>
+              <div class="due" id="due-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="project-view" class="view" aria-labelledby="project-title" hidden>
+          <nav class="crumb" aria-label="Breadcrumb">
+            <a href="#/portfolio">Portfolio</a> / <b id="crumb-project" dir="auto"></b>
+          </nav>
+          <div class="page-head">
+            <div>
+              <span class="label" id="project-ref" dir="auto"></span>
+              <div class="ptitle">
+                <h1 id="project-title" dir="auto"></h1>
+                <span id="project-status"></span>
+              </div>
+              <p id="project-description" dir="auto"></p>
+            </div>
+            <div class="actions">
+              <button class="button" id="edit-project">Edit details</button>
+              <button class="button primary" id="add-task">+ Add task</button>
+            </div>
+          </div>
+          <div class="tblock" id="overview" aria-label="Commercial summary"></div>
+
+          <section class="timeline" aria-label="Task timelines">
+            <div class="tl-tools">
+              <div class="tl-buttons">
+                <button class="button small" id="undo" aria-label="Undo last change">↶ Undo</button>
+                <button class="button small" id="redo" aria-label="Redo last change">↷ Redo</button>
+                <button class="button small" id="fit">Fit all</button>
+                <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
+              </div>
+              <div class="keys">
+                <span id="task-count"></span>
+                <span><i class="key-fact"></i>Recorded event</span>
+                <span><i class="key-open"></i>Action needed</span>
+                <span><i class="key-done"></i>Completed action</span>
+              </div>
+            </div>
+            <div class="timeline-viewport" id="viewport">
+              <div class="timeline-content" id="timeline-content"></div>
+            </div>
+            <div class="tl-foot">
+              <span>Hover for details · Click to edit · Drag from a node's + to branch or merge</span>
+              <span>Ctrl+Z to undo · Changes are saved in this browser</span>
+            </div>
+          </section>
+
+          <div class="below">
+            <section class="panel" aria-labelledby="next-heading">
+              <div class="panel-head">
+                <h2 id="next-heading">Next actions</h2>
+                <span class="muted" id="next-count"></span>
+              </div>
+              <div class="next" id="next-actions"></div>
+            </section>
+            <section class="panel" aria-labelledby="terms-heading">
+              <div class="panel-head">
+                <h2 id="terms-heading">Payment terms</h2>
+                <span class="muted" id="terms-sum"></span>
+              </div>
+              <div class="terms" id="terms-panel"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="editor-backdrop" class="backdrop" hidden></div>
+    <section id="editor" class="event-popup" role="dialog" aria-modal="true" aria-labelledby="editor-title" hidden>
+      <div class="popup-heading">
+        <h2 id="editor-title">Event details</h2>
+        <button class="icon-button" id="close-editor" aria-label="Close event details">×</button>
+      </div>
+      <form id="event-form">
+        <label>Event type
+          <select id="event-kind">
+            <option value="fact">Recorded event — something happened</option>
+            <option value="action">Action — something to do</option>
+          </select>
+        </label>
+        <label>Description
+          <textarea id="event-description" rows="3" required dir="auto" placeholder="What happened, or what needs to happen?"></textarea>
+        </label>
+        <label id="done-field" class="check-label"><input id="event-done" type="checkbox" /> Completed</label>
+        <div class="date-fields">
+          <label><span id="date-label">Occurrence date</span><input type="date" id="event-date" required /></label>
+          <label id="trigger-field">Trigger date<input type="date" id="event-trigger" /></label>
+          <label id="due-field">Due date<input type="date" id="event-due" /></label>
+          <label id="plan-field">Original due date<input type="date" id="event-plan" readonly /></label>
+        </div>
+        <p class="popup-meta" id="event-meta"></p>
+        <label id="branch-field" class="check-label"><input type="checkbox" id="event-branch" /> Create a parallel branch</label>
+        <p id="event-warning" class="warning" hidden></p>
+        <div class="popup-actions">
+          <button type="button" id="delete-event" class="button danger">Delete</button>
+          <button type="submit" class="button primary">Save event</button>
+        </div>
+      </form>
+    </section>
+
+    <dialog id="name-dialog">
+      <form id="name-form">
+        <div class="popup-heading">
+          <h2 id="name-title">New task</h2>
+          <button class="icon-button" type="button" id="close-name" aria-label="Close">×</button>
+        </div>
+        <label>Name<input id="name-input" required maxlength="80" dir="auto" /></label>
+        <label id="description-field">Description<input id="name-description" maxlength="180" dir="auto" /></label>
+        <div class="popup-actions"><button class="button primary" type="submit">Create</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="delete-dialog">
+      <h2>Delete this event?</h2>
+      <p>The event and its connections will be removed.</p>
+      <div class="popup-actions">
+        <button class="button" id="cancel-delete">Cancel</button>
+        <button class="button danger" id="confirm-delete">Delete event</button>
+      </div>
+    </dialog>
+
+    <dialog id="task-dialog" class="task-dialog">
+      <div class="popup-heading">
+        <div>
+          <span class="label">Task workspace</span>
+          <h2 id="task-dialog-title" dir="auto"></h2>
+        </div>
+        <button class="icon-button" id="close-task" aria-label="Close task workspace">×</button>
+      </div>
+      <div id="task-dialog-content"></div>
+    </dialog>
+
+    <dialog id="calendar-dialog" class="calendar-dialog">
+      <div class="popup-heading">
+        <h2>Calendar</h2>
+        <button class="icon-button" id="close-calendar" aria-label="Close calendar">×</button>
+      </div>
+      <label>Day<input id="calendar-date" type="date" /></label>
+      <div id="calendar-results"></div>
+    </dialog>
+
+    <dialog id="connection-dialog">
+      <div class="popup-heading">
+        <h2>Connection direction</h2>
+        <button class="icon-button" id="close-connection" aria-label="Close connection">×</button>
+      </div>
+      <p id="connection-summary" dir="auto"></p>
+      <p>Arrow direction changes the relationship shown, without moving event dates.</p>
+      <button class="button primary" id="reverse-connection">Reverse arrow</button>
+    </dialog>
+
+    <dialog id="import-dialog">
+      <h2>Replace your data with this backup?</h2>
+      <p id="import-summary"></p>
+      <div class="popup-actions">
+        <button class="button" id="cancel-import">Cancel</button>
+        <button class="button primary" id="confirm-import">Import backup</button>
+      </div>
+    </dialog>
+
+    <dialog id="project-dialog" class="project-dialog">
+      <form id="project-form">
+        <div class="popup-heading">
+          <h2>Edit project</h2>
+          <button class="icon-button" type="button" id="close-project" aria-label="Close project details">×</button>
+        </div>
+        <label>Project name<input id="project-name" required maxlength="80" dir="auto" /></label>
+        <label>Short description<input id="project-summary-input" maxlength="180" dir="auto" /></label>
+        <label>Customer<input id="project-customer" maxlength="120" dir="auto" /></label>
+        <label>Scope of supply<textarea id="project-scope" rows="3" maxlength="1000" dir="auto"></textarea></label>
+        <fieldset>
+          <legend>Value and VAT</legend>
+          <div class="field-grid">
+            <label>Currency<input id="project-currency" maxlength="3" placeholder="e.g. SAR" pattern="[A-Za-z]{3}" title="Three-letter currency code, such as SAR" /></label>
+            <label>Value excl. VAT<input id="project-value" type="number" min="0" step="0.01" inputmode="decimal" /></label>
+            <label>VAT rate (%)<input id="project-vat-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="Not set" /></label>
+          </div>
+          <div class="calc-row">
+            <div><span>VAT amount</span><output id="project-vat">—</output></div>
+            <div><span>Total incl. VAT</span><output id="project-total">—</output></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Payment terms</legend>
+          <div id="terms-list"></div>
+          <div class="terms-footer">
+            <button type="button" class="button small" id="add-term">+ Add payment term</button>
+            <span id="terms-total"></span>
+          </div>
+        </fieldset>
+        <p id="project-warning" class="warning" hidden></p>
+        <div class="popup-actions">
+          <button type="button" class="button" id="cancel-project">Cancel</button>
+          <button type="submit" class="button primary">Save project</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="hover-preview" role="tooltip" hidden></div>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>
