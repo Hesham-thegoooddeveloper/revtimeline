@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify formatting
+        run: npx --yes prettier@3.9.9 --check "dist/*.mjs" dist/style.css "tests/*.mjs"
       - name: Verify module syntax
         run: |
           node --check dist/app.mjs
