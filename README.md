@@ -6,6 +6,7 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 
 ## Working prototype
 
+- Sign in with an email account (Google and LinkedIn once enabled) to keep the same projects on every device, or try it without an account in one browser. Accounts use Supabase; see supabase/schema.sql.
 - Start on a portfolio of all projects: status, next action, history, value excluding VAT, and actions due in the next 7 days.
 - Work in a project workspace with a commercial title block, full-width task timelines, next actions and payment terms.
 - Switch between day and night modes, or follow the device setting.

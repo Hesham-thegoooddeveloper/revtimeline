@@ -17,7 +17,32 @@
     </script>
   </head>
   <body>
-    <div class="shell">
+    <div id="booting" class="booting" role="status">Loading RevTimeline…</div>
+
+    <div id="site" class="site" hidden>
+      <header class="site-nav">
+        <a class="logo" href="#/" aria-label="RevTimeline home">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path class="logo-line" d="M2 8h20M6 8c4 0 4 9 9 9h7" />
+            <circle class="logo-start" cx="6" cy="8" r="2.6" />
+            <circle class="logo-end" cx="19" cy="17" r="2.6" />
+          </svg>
+          RevTimeline
+        </a>
+        <nav class="site-links" aria-label="Page sections">
+          <button class="link" data-scroll="how">How it works</button>
+          <button class="link" data-scroll="features">Features</button>
+          <span class="free">Free while in preview</span>
+        </nav>
+        <div class="actions">
+          <a class="button" href="#/sign-in">Sign in</a>
+          <a class="button primary" href="#/sign-up">Start free</a>
+        </div>
+      </header>
+      <main id="site-main"></main>
+    </div>
+
+    <div class="shell" id="app-shell" hidden>
       <aside class="rail" aria-label="Main menu">
         <a class="logo" href="#/portfolio" aria-label="RevTimeline portfolio">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -47,9 +72,10 @@
             <button data-mode="night">Night</button>
           </div>
           <div class="me">
-            <span class="avatar" aria-hidden="true">PM</span>
-            <div>Your workspace<small id="saved">Saved on this device</small></div>
+            <span class="avatar" id="avatar" aria-hidden="true">PM</span>
+            <div><span id="account-name" dir="auto">Your workspace</span><small id="saved">Saved in this browser</small></div>
           </div>
+          <button class="button small" id="account-action">Sign in to sync</button>
         </div>
       </aside>
 
@@ -58,6 +84,15 @@
           <p id="recovery-text"></p>
           <button class="button small" id="recovery-download">Download unreadable data</button>
           <button class="icon-button" id="recovery-dismiss" aria-label="Dismiss message">×</button>
+        </div>
+        <div id="conflict" class="recovery" role="alert" hidden>
+          <p>
+            This workspace was changed on another device while this one had unsaved changes. The latest
+            saved version is shown, and this device's version is kept so you can choose.
+          </p>
+          <button class="button small primary" id="conflict-keep">Use this device's version</button>
+          <button class="button small" id="conflict-download">Download this device's version</button>
+          <button class="icon-button" id="conflict-dismiss" aria-label="Keep the latest version">×</button>
         </div>
 
         <section id="portfolio-view" class="view" aria-labelledby="portfolio-title" hidden>
@@ -288,8 +323,19 @@
       </form>
     </dialog>
 
+    <dialog id="first-dialog">
+      <h2>Set up your workspace</h2>
+      <p id="first-summary"></p>
+      <div class="choices">
+        <button class="button primary" id="first-upload">Upload the projects from this browser</button>
+        <button class="button" id="first-empty">Start with an empty project</button>
+        <button class="button" id="first-sample">Start with the example project</button>
+      </div>
+    </dialog>
+
     <div id="hover-preview" role="tooltip" hidden></div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="vendor/supabase.js"></script>
     <script type="module" src="app.mjs"></script>
   </body>
 </html>

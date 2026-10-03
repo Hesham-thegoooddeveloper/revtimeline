@@ -1,5 +1,15 @@
 # Change log
 
+## Accounts and syncing — 3 October 2026
+
+Authorized by the owner. Not yet published.
+
+- A public landing page, plus screens to sign in, create an account, confirm the email address and reset a password. Google and LinkedIn sign-in buttons appear once those providers are switched on in Supabase.
+- Signed-in accounts keep their projects in Supabase and see them on every device. Saving happens in the background, works offline, and never silently overwrites a newer save from another device.
+- On first sign-in you choose to upload the projects from this browser, start empty, or start with the example project.
+- "Try it without an account" keeps the previous behaviour: projects stay in that browser.
+- Adds the database setup script (supabase/schema.sql), the bundled Supabase library (MIT licence), and tests for background saving.
+
 ## Renamed to RevTimeline — 3 October 2026
 
 The product is now called RevTimeline, with the domain revtimeline.tech. "TrackFlow" was already used by several other products, including construction approval software. Saved data keeps its original storage keys, so existing projects and settings load unchanged. Backups are now labelled RevTimeline; older TrackFlow backups still import.

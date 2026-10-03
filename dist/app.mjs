@@ -20,9 +20,13 @@ import {
   contractValue,
   historyCounts,
 } from './portfolio.mjs';
+import { createAccount } from './account.mjs';
+import { createSync } from './sync.mjs';
+import { siteMarkup, friendlyError } from './site.mjs';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
   key = 'trackflow-prototype-v1',
+  GUEST_KEY = 'trackflow-guest',
   // Backups exported before the rename are labelled TrackFlow.
   BACKUP_APPS = ['RevTimeline', 'TrackFlow'];
 function uid() {
@@ -106,12 +110,75 @@ let active = data.projects[0].id,
   redoStack = [],
   pendingImport = null,
   suppressClickUntil = 0,
-  view = 'portfolio';
+  view = 'portfolio',
+  // Signed-in state. user is null in guest mode, where projects stay in this browser only.
+  screen = 'landing',
+  account = null,
+  user = null,
+  sync = null,
+  unwatch = null,
+  providers = {},
+  conflictMine = null,
+  siteState = { email: '', note: '', error: '' };
+// Projects saved in this browser without an account, or null when there are none.
+function readGuest() {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? readStored(raw) : null;
+  } catch {
+    return null;
+  }
+}
+const guestAllowed = () => {
+  try {
+    return localStorage.getItem(GUEST_KEY) === '1' || localStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+};
+const accountKey = () => `${key}.account-${user.id}`;
+function writeAccountCache(dirty) {
+  try {
+    localStorage.setItem(accountKey(), JSON.stringify({ version: sync.version, dirty, data }));
+  } catch {}
+}
+function readAccountCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(accountKey()));
+    return cached && !checkData(migrate(cached.data)) ? cached : null;
+  } catch {
+    return null;
+  }
+}
 const geometry = new Map(),
   project = () => data.projects.find((p) => p.id === active),
   taskBy = (id) => project().tasks.find((t) => t.id === id);
-// Screens are addressed as #/portfolio and #/project/<id> so a reload keeps your place.
+// Every screen has an address so a reload keeps your place: #/ (landing), #/sign-in,
+// #/sign-up, #/check-email, #/forgot, #/new-password, #/portfolio and #/project/<id>.
+const SITE_ROUTES = {
+  '#/sign-in': 'sign-in',
+  '#/sign-up': 'sign-up',
+  '#/check-email': 'check-email',
+  '#/forgot': 'forgot',
+};
 function route() {
+  const hash = location.hash;
+  if (hash === '#/new-password') {
+    screen = user ? 'new-password' : 'sign-in';
+    return;
+  }
+  const inApp = hash.startsWith('#/portfolio') || hash.startsWith('#/project/');
+  if (!user && !inApp) {
+    screen = SITE_ROUTES[hash] || 'landing';
+    return;
+  }
+  if (!user && !guestAllowed()) {
+    screen = 'sign-in';
+    history.replaceState(null, '', '#/sign-in');
+    return;
+  }
+  if (user && !inApp) history.replaceState(null, '', '#/portfolio');
+  screen = 'app';
   const match = location.hash.match(/^#\/project\/([A-Za-z0-9_-]+)$/);
   if (match && data.projects.some((p) => p.id === match[1])) {
     if (active !== match[1]) viewZoom = {};
@@ -131,13 +198,19 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 // True when the first strong character is right-to-left (Arabic or Hebrew).
 const isRtl = (s) => /^[^A-Za-z֐-ࣿ]*[֐-ࣿ]/.test(s);
 function save() {
+  if (user) {
+    // Keep a copy here first, so nothing is lost if the page closes before the upload finishes.
+    writeAccountCache(true);
+    sync.queue(structuredClone(data));
+    return;
+  }
   if (saveBlocked) {
     $('saved').textContent = 'Not saved';
     return;
   }
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    $('saved').textContent = 'Saved on this device';
+    $('saved').textContent = 'Saved in this browser';
   } catch {
     $('saved').textContent = 'Saving unavailable';
     toast('Your browser could not save these changes.');
@@ -280,10 +353,62 @@ function statusChip(p) {
     [cls, text] = STATUS[s.key];
   return `<span class="chip ${cls}">${text(s)}</span>`;
 }
+const SITE_TITLES = {
+  'sign-in': 'Sign in',
+  'sign-up': 'Create your account',
+  'check-email': 'Check your inbox',
+  forgot: 'Reset your password',
+  'new-password': 'Choose a new password',
+};
+function renderSite() {
+  const providerNames = [
+    providers.google && 'Google',
+    providers.linkedin_oidc && 'LinkedIn',
+  ].filter(Boolean);
+  $('site').dataset.screen = screen;
+  $('site-main').innerHTML = siteMarkup(screen, {
+    ...siteState,
+    providers,
+    providerNames,
+    guestData: !!readGuest(),
+  });
+  document.title = screen === 'landing' ? 'RevTimeline' : `${SITE_TITLES[screen]} · RevTimeline`;
+}
+// Shows a public screen with an optional message, e.g. go('#/sign-in', { note: '…' }).
+function go(hash, state = {}) {
+  siteState = { email: siteState.email, note: '', error: '', ...state };
+  if (location.hash === hash) {
+    route();
+    render();
+  } else {
+    keepSiteState = true;
+    location.hash = hash;
+  }
+}
+const initials = (name) =>
+  name
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'PM';
 function render() {
   hideHover();
+  $('booting').hidden = true;
+  const inApp = screen === 'app';
+  $('site').hidden = inApp;
+  $('app-shell').hidden = !inApp;
+  if (!inApp) {
+    renderSite();
+    return;
+  }
+  document.title = 'RevTimeline';
   ensureActive();
   renderRail();
+  const name = user ? user.user_metadata?.name || user.email : 'Your workspace';
+  $('account-name').textContent = name;
+  $('avatar').textContent = user ? initials(name) : 'PM';
+  $('account-action').textContent = user ? 'Sign out' : 'Sign in to sync';
   $('portfolio-view').hidden = view !== 'portfolio';
   $('project-view').hidden = view !== 'project';
   if (view === 'portfolio') renderPortfolio();
@@ -783,9 +908,13 @@ $('name-form').onsubmit = (e) => {
   if (nameMode === 'project') location.hash = '#/project/' + active;
 };
 $('new-project-main').onclick = () => openName('project');
+let keepSiteState = false;
 window.addEventListener('hashchange', () => {
   if (focusedTask) closeTask();
   closeEditor();
+  // Messages belong to the screen they were shown on, unless go() set them for the next one.
+  if (!keepSiteState) siteState = { email: siteState.email, note: '', error: '' };
+  keepSiteState = false;
   route();
   render();
   scrollTo(0, 0);
@@ -1215,14 +1344,9 @@ $('confirm-import').onclick = () => {
     toast('Backup imported');
 };
 // Another tab saved: load its data so this tab cannot overwrite it with an older copy.
-window.addEventListener('storage', (e) => {
-  if (e.key !== key || !e.newValue) return;
-  let incoming;
-  try {
-    incoming = readStored(e.newValue);
-  } catch {
-    return;
-  }
+// Replaces everything on screen with data saved elsewhere (another tab or device).
+// Undo history is cleared because it refers to the replaced data.
+function replaceData(incoming, message) {
   data = incoming;
   undoStack = [];
   redoStack = [];
@@ -1232,9 +1356,22 @@ window.addEventListener('storage', (e) => {
     $(id).close();
   if (focusedTask && !taskBy(focusedTask)) closeTask();
   viewZoom = {};
-  render();
-  if (focusedTask) renderTaskDialog();
-  toast('Updated with changes made in another tab.');
+  if (screen === 'app') {
+    render();
+    if (focusedTask) renderTaskDialog();
+  }
+  if (message) toast(message);
+}
+// Guest mode: another tab saved, so load its data rather than overwrite it with an older copy.
+window.addEventListener('storage', (e) => {
+  if (user || e.key !== key || !e.newValue) return;
+  let incoming;
+  try {
+    incoming = readStored(e.newValue);
+  } catch {
+    return;
+  }
+  replaceData(incoming, 'Updated with changes made in another tab.');
 });
 function showRecovery() {
   $('recovery-text').textContent = saveBlocked
@@ -1275,9 +1412,324 @@ try {
 } catch {
   applyMode('auto');
 }
-route();
-render();
-if (unreadable) {
-  showRecovery();
-  if (saveBlocked) save();
-} else save();
+
+// ---- Accounts and syncing ----
+const STATUS_TEXT = {
+  pending: 'Saving…',
+  saving: 'Saving…',
+  saved: 'Saved to your account',
+  offline: 'Offline · changes kept on this device',
+};
+function setStatus(state) {
+  if (!user) return;
+  $('saved').textContent = STATUS_TEXT[state] || '';
+  if (state === 'saved') writeAccountCache(false);
+}
+function remoteData(latest) {
+  const incoming = migrate(structuredClone(latest.data)),
+    error = checkData(incoming);
+  if (error) throw Error('The workspace saved in your account could not be read. ' + error);
+  return incoming;
+}
+// First sign-in: upload this browser's projects, or start empty, or start with the example.
+function chooseFirstWorkspace() {
+  const guest = readGuest(),
+    sampleProjects = JSON.stringify(migrate(structuredClone(sample)).projects),
+    hasGuest = !!guest && JSON.stringify(guest.projects) !== sampleProjects;
+  $('first-upload').hidden = !hasGuest;
+  $('first-summary').textContent = hasGuest
+    ? `This browser has ${plural(guest.projects.length, 'project')} saved without an account. Upload them to your account, or start fresh. The projects in this browser stay here either way.`
+    : 'Your account has no projects yet. Start with an empty project, or explore the example project first.';
+  return new Promise((resolve) => {
+    const pick = (value) => {
+      $('first-dialog').close();
+      resolve(value);
+    };
+    $('first-upload').onclick = () => pick(guest);
+    $('first-empty').onclick = () =>
+      pick(
+        migrate({
+          projects: [{ id: uid(), name: 'My first project', description: '', tasks: [] }],
+        }),
+      );
+    $('first-sample').onclick = () => pick(migrate(structuredClone(sample)));
+    $('booting').hidden = true;
+    $('first-dialog').showModal();
+  });
+}
+$('first-dialog').addEventListener('cancel', (e) => e.preventDefault());
+
+// Loads the account's workspace, using the copy kept on this device to open instantly.
+async function startAccount(sessionUser) {
+  user = sessionUser;
+  sync = createSync({
+    save: account.save,
+    load: account.load,
+    onStatus: setStatus,
+    onConflict: showConflict,
+    onRemote: (latest) => {
+      try {
+        replaceData(remoteData(latest), 'Updated with changes from another device.');
+        writeAccountCache(false);
+      } catch (err) {
+        toast(err.message);
+      }
+    },
+  });
+  const cached = readAccountCache();
+  if (cached) {
+    data = migrate(cached.data);
+    sync.setVersion(cached.version);
+  }
+  let latest;
+  try {
+    latest = await account.load();
+  } catch (err) {
+    if (!cached) throw err;
+    setStatus('offline');
+    return;
+  }
+  if (!latest) {
+    data = await chooseFirstWorkspace();
+    sync.setVersion(0);
+    save();
+    await sync.flushNow();
+  } else if (cached?.dirty && cached.version === latest.version) {
+    save(); // Upload changes made on this device while it was offline.
+  } else if (cached?.dirty) {
+    showConflict(latest, cached.data);
+  } else {
+    data = remoteData(latest);
+    sync.setVersion(latest.version);
+    writeAccountCache(false);
+    setStatus('saved');
+  }
+  undoStack = [];
+  redoStack = [];
+  active = data.projects[0].id;
+}
+let entering = null;
+function enterAccount(sessionUser) {
+  if (user?.id === sessionUser.id) return Promise.resolve();
+  entering ||= (async () => {
+    $('booting').hidden = false;
+    try {
+      await startAccount(sessionUser);
+    } catch (err) {
+      console.error(err);
+      user = null;
+      sync = null;
+      $('booting').textContent =
+        'RevTimeline could not load your workspace. Check your internet connection, then reload the page.';
+      return;
+    }
+    unwatch = account.watch(user.id, (version) => sync.remoteChanged(version).catch(() => {}));
+    if (location.hash !== '#/new-password' && !/^#\/(portfolio|project\/)/.test(location.hash))
+      history.replaceState(null, '', '#/portfolio');
+    route();
+    render();
+  })().finally(() => (entering = null));
+  return entering;
+}
+function showConflict(latest, mine) {
+  conflictMine = mine;
+  try {
+    localStorage.setItem(`${accountKey()}.conflict`, JSON.stringify(mine));
+  } catch {}
+  try {
+    replaceData(remoteData(latest));
+  } catch (err) {
+    toast(err.message);
+  }
+  setStatus('saved');
+  $('conflict').hidden = false;
+}
+$('conflict-keep').onclick = () => {
+  const mine = migrate(structuredClone(conflictMine));
+  conflictMine = null;
+  $('conflict').hidden = true;
+  replaceData(mine, "Saving this device's version to your account.");
+  save();
+};
+$('conflict-download').onclick = () =>
+  download(
+    `revtimeline-this-device-${today()}.json`,
+    JSON.stringify(
+      { app: 'RevTimeline', exportedAt: new Date().toISOString(), data: conflictMine },
+      null,
+      2,
+    ),
+  );
+$('conflict-dismiss').onclick = () => {
+  conflictMine = null;
+  $('conflict').hidden = true;
+};
+// Leaves the account. Projects stay in the account; this device's copy is removed.
+function leaveAccount() {
+  unwatch?.();
+  unwatch = null;
+  try {
+    localStorage.removeItem(accountKey());
+  } catch {}
+  user = null;
+  sync = null;
+  data = readGuest() || migrate(structuredClone(sample));
+  active = data.projects[0].id;
+  undoStack = [];
+  redoStack = [];
+  viewZoom = {};
+  $('conflict').hidden = true;
+  $('saved').textContent = 'Saved in this browser';
+  go('#/');
+}
+async function signOut() {
+  if (!sync.idle()) await sync.flushNow().catch(() => {});
+  if (!sync.idle()) {
+    toast(
+      "Some changes haven't reached your account yet. Reconnect to the internet, then sign out.",
+    );
+    return;
+  }
+  await account.signOut().catch(() => {});
+  leaveAccount();
+}
+$('account-action').onclick = () => (user ? signOut() : go('#/sign-in'));
+document.addEventListener('visibilitychange', () => {
+  if (!user || document.visibilityState !== 'visible') return;
+  sync.flushNow();
+  sync.remoteChanged().catch(() => {});
+});
+window.addEventListener('online', () => user && sync.flushNow());
+
+// Public screens: links, sign-in providers and forms.
+function formMessage(kind, text) {
+  const el = $(kind === 'error' ? 'form-error' : 'form-note');
+  if (!el) return toast(text);
+  el.textContent = text;
+  el.hidden = false;
+}
+$('site').addEventListener('click', async (e) => {
+  const scroll = e.target.closest('[data-scroll]');
+  if (scroll) {
+    if (screen !== 'landing') go('#/');
+    requestAnimationFrame(() => $(scroll.dataset.scroll)?.scrollIntoView({ behavior: 'smooth' }));
+    return;
+  }
+  const provider = e.target.closest('[data-provider]');
+  if (provider) {
+    const { error } = await account.signInWith(provider.dataset.provider);
+    if (error) formMessage('error', friendlyError(error));
+    return;
+  }
+  const action = e.target.closest('[data-action]')?.dataset.action;
+  if (action === 'guest') {
+    try {
+      localStorage.setItem(GUEST_KEY, '1');
+    } catch {}
+    location.hash = '#/portfolio';
+  } else if (action === 'resend') {
+    const email = (e.target.form?.email?.value || siteState.email).trim();
+    if (!email) return formMessage('error', 'Enter your email first.');
+    const { error } = await account.resendConfirmation(email);
+    if (error) formMessage('error', friendlyError(error));
+    else formMessage('note', `Sent to ${email}. Check your inbox and spam folder.`);
+  }
+});
+$('site').addEventListener('submit', async (e) => {
+  const form = e.target.closest('form[data-form]');
+  if (!form) return;
+  e.preventDefault();
+  if (!account)
+    return formMessage('error', 'Accounts are not available right now. Try again later.');
+  const kind = form.dataset.form,
+    f = Object.fromEntries(new FormData(form)),
+    button = form.querySelector('button.primary');
+  if (f.email) siteState.email = f.email.trim();
+  for (const id of ['form-error', 'form-note']) if ($(id)) $(id).hidden = true;
+  button.disabled = true;
+  try {
+    if (kind === 'sign-in') {
+      const { data: res, error } = await account.signIn(siteState.email, f.password);
+      if (error) {
+        formMessage('error', friendlyError(error));
+        if (/not confirmed/i.test(error.message))
+          form.querySelector('[data-action="resend"]').hidden = false;
+        return;
+      }
+      await enterAccount(res.user);
+    } else if (kind === 'sign-up') {
+      const { data: res, error } = await account.signUp(f.name.trim(), siteState.email, f.password);
+      if (error) return formMessage('error', friendlyError(error));
+      // With email confirmation on, Supabase answers an existing address with no identities.
+      if (res.user?.identities?.length === 0)
+        return formMessage('error', 'An account with this email already exists. Sign in instead.');
+      if (res.session) return enterAccount(res.user);
+      go('#/check-email');
+    } else if (kind === 'forgot') {
+      const { error } = await account.sendPasswordReset(siteState.email);
+      if (error) return formMessage('error', friendlyError(error));
+      formMessage(
+        'note',
+        "If there's an account for that email, a reset link is on its way. Check your inbox and spam folder.",
+      );
+    } else if (kind === 'new-password') {
+      if (f.password !== f.repeat) return formMessage('error', "The two passwords don't match.");
+      const { error } = await account.setPassword(f.password);
+      if (error) return formMessage('error', friendlyError(error));
+      location.hash = '#/portfolio';
+      toast('Your new password is saved.');
+    }
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// Start-up: restore the session (including after a confirmation, sign-in or reset link).
+let booted = false,
+  recovering = false;
+async function boot() {
+  const params = new URLSearchParams(location.search),
+    arrivedWithCode = params.has('code'),
+    linkError = params.get('error_description');
+  try {
+    account = window.supabase ? createAccount() : null;
+  } catch (err) {
+    console.error(err);
+    account = null;
+  }
+  if (account) {
+    account.onChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        recovering = true;
+        if (user) location.hash = '#/new-password';
+      } else if (event === 'SIGNED_OUT' && user) leaveAccount();
+      else if (event === 'SIGNED_IN' && session && booted && !user) enterAccount(session.user);
+    });
+    const [session, list] = await Promise.all([
+      account.session().catch(() => null),
+      account.providers(),
+    ]);
+    providers = list;
+    if (arrivedWithCode || linkError)
+      history.replaceState(null, '', location.pathname + location.hash);
+    if (session) {
+      await enterAccount(session.user);
+      if (recovering) location.hash = '#/new-password';
+    } else if (linkError) {
+      siteState.error = `${linkError}. Sign in, or ask for a new link.`;
+      history.replaceState(null, '', '#/sign-in');
+    } else if (arrivedWithCode) {
+      siteState.note = 'Your email is confirmed. Sign in to continue.';
+      history.replaceState(null, '', '#/sign-in');
+    }
+  }
+  booted = true;
+  if (user) return;
+  route();
+  render();
+  if (unreadable) {
+    showRecovery();
+    if (saveBlocked) save();
+  } else if (stored) save();
+}
+boot();
