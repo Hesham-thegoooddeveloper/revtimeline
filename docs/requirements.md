@@ -33,3 +33,8 @@ Ctrl+Z/Cmd+Z undo app changes; Ctrl+Shift+Z/Cmd+Shift+Z/Ctrl+Y redo them. Text f
 Projects are saved under the existing browser storage key. Migration preserves existing records: prior unfinished events become actions; prior completed events become recorded events. The owner can refine classification in the editor.
 
 The current personal prototype has no shared account system, backend database, subscription billing or cross-device synchronization. Dates use calendar-day precision. Backup/restore, browser end-to-end verification and final visual refinement remain work items.
+
+
+## Project overview
+
+Projects can be created and edited with name, scope, customer, currency, value excluding VAT, configurable VAT rate and free-text payment terms. A compact summary appears above task timelines. Blank financial inputs mean unknown, while explicit zero values are supported. Calculations round to two decimal places; no VAT rate is assumed. Existing project descriptions become scope without rewriting task history. Structured payment milestones and the remaining commercial fields stay in the backlog.

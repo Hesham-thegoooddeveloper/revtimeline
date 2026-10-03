@@ -1,3 +1,9 @@
+# Unreleased — Project overview
+
+- Create and edit project name, scope, customer, currency, value excluding VAT, configurable VAT rate and payment terms.
+- Show calculated VAT and total above existing task timelines. Unknown VAT remains blank; zero VAT is supported.
+- Preserve saved projects and use existing undo/redo and browser saving.
+
 # Change log
 
 ## Repository baseline — 3 October 2026
@@ -22,3 +28,4 @@ Source commits: `f006964` and `8fa2af8`. They are retained exactly as originally
 Created project/task timelines, minimal event editing, branching, merging, zoom, pan, contextual inspection and browser-local saving.
 
 Source commit: `44b80d0`.
+

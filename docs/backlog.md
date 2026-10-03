@@ -1,6 +1,8 @@
 # Approved pending changes
 
-**Implementation hold:** the owner approved these directions but explicitly requested no website changes until instructed. Preparing this repository does not lift that hold.
+The owner authorized the first project overview slice on 3 October 2026. Other pending changes remain on hold.
+
+Implemented in this branch: creation/editing of name, scope, customer, currency, value excluding VAT, configurable VAT, calculated totals and free-text payment terms. The remaining structured commercial fields below are still pending.
 
 ## Completion editing
 
@@ -35,3 +37,4 @@ Show a compact overview above the task timelines, with fuller information under 
 ## Later milestones
 
 Dependable saving, backup/restore and recovery testing precede critical personal use. Later possibilities include search, attachments, reports, analysis and AI summaries. Multi-user organizations, roles, cross-device access and subscriptions require separate validation and release planning.
+
