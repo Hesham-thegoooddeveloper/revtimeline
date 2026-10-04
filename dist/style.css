@@ -1952,6 +1952,51 @@ a.button {
     padding: 32px 16px;
   }
 }
+.site-foot a,
+.auth-terms a {
+  color: var(--ink);
+}
+.auth-terms {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Privacy policy and terms pages */
+.legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 44px 24px 72px;
+  line-height: 1.7;
+}
+.legal h1 {
+  margin: 6px 0 18px;
+  font: 720 34px/1.15 var(--display);
+  font-stretch: 112%;
+}
+.legal h2 {
+  margin: 30px 0 8px;
+  font: 650 18px/1.3 var(--display);
+  font-stretch: 112%;
+}
+.legal p,
+.legal li {
+  color: var(--ink);
+}
+.legal ul {
+  padding-inline-start: 22px;
+  display: grid;
+  gap: 8px;
+}
+.legal a {
+  color: var(--fact);
+}
+.legal-links {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
 
 /* Narrow windows: the rail moves to the top. Desktop is the main target. */
 /* Medium windows: the due list moves under the projects table, and the summary
