@@ -42,4 +42,10 @@ Projects are saved under the existing browser storage key, with a schema version
 
 Saved data that cannot be read is copied to a separate `.unreadable-` key and never overwritten; the app shows the sample project and offers the copy for download. Export writes all projects to a JSON backup file; import validates the file, asks for confirmation, replaces all data and can be undone. When another tab saves, open tabs load that data and clear their session undo history.
 
-The current personal prototype has no shared account system, backend database, subscription billing or cross-device synchronization. Dates use calendar-day precision. Automated browser end-to-end checks in CI and final visual refinement remain work items.
+## Accounts and syncing
+
+Visitors land on a public page at revtimeline.tech. They can create an account with email and password (the address must be confirmed through an emailed link before signing in), sign in with Google or LinkedIn once those providers are switched on in Supabase, reset a forgotten password by email, or try the app without an account, which keeps projects in that browser only.
+
+A signed-in person's projects are stored as one workspace in Supabase (supabase/schema.sql), protected by row-level security so only its owner can read or change it. Each device keeps a copy so the app opens instantly and works offline; changes upload in the background. A save names the version it was based on, and the server refuses it if another device saved since. In that case the latest saved version is shown and this device's version is kept, so the person can choose either one or download it. Other open devices load new saves within seconds. On first sign-in, the person chooses to upload the projects from that browser, start with an empty project, or start with the example project. Signing out removes the device's copy; it is refused while changes have not yet reached the account.
+
+There is no shared team workspace, subscription billing or sign-in by username yet: accounts sign in by email. Dates use calendar-day precision. Automated browser end-to-end checks in CI and final visual refinement remain work items.
