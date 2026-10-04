@@ -84,7 +84,7 @@ function landing(ctx) {
 </section>
 <footer class="site-foot">
   <span>RevTimeline · Every revision, every approval, in order.</span>
-  <span>Free while in preview</span>
+  <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · Free while in preview</span>
 </footer>`;
 }
 
@@ -140,6 +140,7 @@ const SCREENS = {
   <label>Password<input type="password" name="password" autocomplete="new-password" required minlength="8" /><small>At least 8 characters.</small></label>
   ${messages(ctx)}
   <button class="button primary wide">Create account</button>
+  <p class="auth-terms">By creating an account you agree to the <a href="terms.html">terms of service</a> and <a href="privacy.html">privacy policy</a>.</p>
   <p class="auth-foot">Already have an account? <a href="#/sign-in">Sign in</a></p>
 </form>`),
   'check-email': (ctx) =>
