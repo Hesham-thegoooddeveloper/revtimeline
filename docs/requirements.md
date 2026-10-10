@@ -28,6 +28,8 @@ Each task starts at its own first event and opens fitted to its full history. A 
 
 The workspace has an All tasks tab followed by one tab per project. Tasks within a project can be reordered. Activity points can be moved horizontally and vertically for presentation without changing their dates or connections; Tidy layout removes a task's manual offsets. The Hand tool pans horizontally within a task and vertically through the project page.
 
+When an event is added from an existing point, place it a readable distance after that point and reveal both in the task viewport, leaving space to the right. For example, adding an event one day after the last event should not push the new point against the viewport edge. This placement changes only the visual layout; the chosen date stays intact, and Tidy layout or Fit returns it to the date-based position.
+
 A task can be added from the top of the workspace with an explicit project choice; new tasks appear first. The task row offers editing for its name and optional description. Reordering shows an insertion placeholder before the order is saved. Connection lines and their controls follow a point throughout a drag. Hovering a connection shows the day interval from the two activity dates; an unfinished action makes this a scheduled interval. Fit resets both zoom and manual point offsets to the automatic date-based view. The event form can be dragged by its heading and scrolled within the viewport.
 
 Descriptions appear above the lines. Full details appear on hover and keyboard focus. Clicking opens an editor. Plus controls between nodes insert events; small node ports currently support adding, branching and merging. The latest request to remove most node-plus controls remains pending.

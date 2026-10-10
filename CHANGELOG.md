@@ -2,6 +2,7 @@
 
 ## Task interaction refinements — 10 October 2026
 
+- Place newly connected activities just after their source with room to the right, and bring both into view after saving. Their dates remain unchanged; Tidy layout or Fit restores date-based spacing.
 - Add a top task field with project selection. New tasks appear first instead of being appended to the end of the project view.
 - Edit task names and descriptions from each task row.
 - Show the number of days between connected activities on hover, identifying scheduled intervals when an action is unfinished.
