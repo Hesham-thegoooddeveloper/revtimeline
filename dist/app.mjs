@@ -22,6 +22,7 @@ import {
 } from './portfolio.mjs';
 import { createAccount } from './account.mjs';
 import { createSync } from './sync.mjs';
+import { createExcelFile } from './excel.mjs';
 import { siteMarkup, friendlyError } from './site.mjs';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
@@ -108,6 +109,7 @@ let active = data.projects[0].id,
   connection = null,
   viewZoom = {},
   quickProjectRoute = null,
+  projectInfoOpen = false,
   undoStack = [],
   redoStack = [],
   pendingImport = null,
@@ -332,6 +334,7 @@ function edgeGeometry(n, m) {
 function taskMarkup(t, width, surface = 'main') {
   const b = bounds(t, Math.max(240, width), surface),
     lanes = [...new Set(t.events.map((e) => e.lane))].sort((a, b) => a - b),
+    terms = searchTerms(),
     nodes = new Map();
   let y = 0;
   for (const lane of lanes) {
@@ -389,8 +392,9 @@ function taskMarkup(t, width, surface = 'main') {
     const n = nodes.get(e.id),
       short = e.description.length > 21 ? e.description.slice(0, 20) + '…' : e.description,
       // Arabic labels start at the right edge of their box and run leftward.
-      labelAt = isRtl(e.description) ? `direction="rtl" x="${n.x + 62}"` : `x="${n.x - 62}"`;
-    svg += `<g class="node" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
+      labelAt = isRtl(e.description) ? `direction="rtl" x="${n.x + 62}"` : `x="${n.x - 62}"`,
+      matched = terms.length && eventMatches(e, terms);
+    svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
     ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${canvasWidth}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
@@ -471,6 +475,8 @@ function render() {
       .join('') +
     `<button class="workspace-tab add-tab" id="new-project-tab" aria-label="New project">＋</button>`;
   $('new-project-tab').onclick = () => openName('project');
+  $('workspace-search').placeholder =
+    view === 'portfolio' ? 'Search all tasks and activities' : 'Search this project';
   const chosenProject = $('quick-task-project').value,
     quickRoute = view === 'project' ? active : 'all';
   $('quick-task-project').innerHTML = data.projects
@@ -489,7 +495,89 @@ function render() {
   $('project-view').hidden = view !== 'project';
   if (view === 'portfolio') renderPortfolio();
   else renderProject();
+  syncProjectInfo();
 }
+const searchTerms = () =>
+  $('workspace-search').value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+const containsTerms = (values, terms) => {
+  const text = values
+    .filter((value) => value !== null && value !== undefined)
+    .join(' ')
+    .toLocaleLowerCase();
+  return terms.every((term) => text.includes(term));
+};
+const eventMatches = (event, terms) =>
+  containsTerms(
+    [
+      event.description,
+      event.kind,
+      event.done ? 'completed' : 'open',
+      visibleDate(event),
+      event.triggered,
+      event.planned,
+      event.scheduled,
+      event.actual,
+    ],
+    terms,
+  );
+const taskMatches = (project, task, terms) =>
+  !terms.length ||
+  containsTerms(
+    [
+      project.name,
+      project.description,
+      project.details?.customer,
+      project.details?.scope,
+      task.name,
+      task.description,
+      ...task.events.flatMap((event) => [
+        event.description,
+        event.kind,
+        event.done ? 'completed' : 'open',
+        visibleDate(event),
+        event.triggered,
+        event.planned,
+        event.scheduled,
+        event.actual,
+      ]),
+    ],
+    terms,
+  );
+function searchStatus(count, terms) {
+  $('search-status').hidden = !terms.length;
+  $('search-status').textContent = terms.length ? `${plural(count, 'matching task')}` : '';
+}
+function syncProjectInfo() {
+  const docked = matchMedia('(min-width: 1700px)').matches;
+  if (docked) projectInfoOpen = false;
+  const visible = screen === 'app' && view === 'project' && (docked || projectInfoOpen),
+    panel = $('project-info');
+  panel.classList.toggle('open', projectInfoOpen && !docked);
+  panel.inert = !visible;
+  panel.setAttribute('aria-hidden', String(!visible));
+  panel.setAttribute('role', projectInfoOpen ? 'dialog' : 'complementary');
+  if (projectInfoOpen) panel.setAttribute('aria-modal', 'true');
+  else panel.removeAttribute('aria-modal');
+  $('project-info-scrim').hidden = !projectInfoOpen || docked || view !== 'project';
+  $('project-info-toggle').setAttribute('aria-expanded', String(projectInfoOpen && !docked));
+}
+function closeProjectInfo() {
+  projectInfoOpen = false;
+  syncProjectInfo();
+  $('project-info-toggle').focus();
+}
+$('project-info-toggle').onclick = () => {
+  projectInfoOpen = true;
+  syncProjectInfo();
+  $('project-info-close').focus();
+};
+$('project-info-close').onclick = closeProjectInfo;
+$('project-info-scrim').onclick = closeProjectInfo;
+$('workspace-search').oninput = () => {
+  if (screen !== 'app') return;
+  if (view === 'portfolio') renderPortfolio();
+  else renderProject();
+};
 function renderRail() {
   const now = today();
   if (view === 'portfolio') $('portfolio-nav').setAttribute('aria-current', 'page');
@@ -523,6 +611,10 @@ function kpi(label, value, note, cls = '') {
 function renderPortfolio() {
   const now = today(),
     projects = data.projects,
+    terms = searchTerms(),
+    matchingTasks = projects.flatMap((p) =>
+      p.tasks.filter((t) => taskMatches(p, t, terms)).map((t) => ({ p, t })),
+    ),
     statuses = projects.map((p) => projectStatus(p, now)),
     open = statuses.reduce((n, s) => n + s.open, 0),
     overdue = statuses.reduce((n, s) => n + s.overdue, 0),
@@ -530,16 +622,47 @@ function renderPortfolio() {
     soon = dueSoon(projects, now),
     values = contractValue(projects),
     valued = projects.filter((p) => Number.isFinite(p.details?.value)).length;
+  searchStatus(matchingTasks.length, terms);
   $('all-tasks').innerHTML =
-    projects
-      .flatMap((p) =>
-        p.tasks.map((t) => {
-          const events = [...t.events].sort((a, b) => day(visibleDate(a)) - day(visibleDate(b))),
-            shown = events.slice(0, 8);
-          return `<a class="all-task-card" href="#/project/${p.id}"><div class="all-task-head"><strong dir="auto">${esc(t.name)}</strong><span dir="auto">${esc(p.name)}</span></div>${t.description ? `<p class="all-task-description" dir="auto">${esc(t.description)}</p>` : ''}<div class="all-task-track">${shown.length ? shown.map((e) => `<div class="all-task-point"><i class="${e.kind === 'fact' ? 'fact' : e.done ? 'done' : 'open'}"></i><span dir="auto">${esc(e.description)}</span><small>${shortDate(visibleDate(e))}</small></div>`).join('') : '<span class="muted">No activity yet</span>'}</div></a>`;
-        }),
-      )
-      .join('') || '<p class="empty">No tasks yet. Create a project to get started.</p>';
+    matchingTasks
+      .map(({ p, t }) => {
+        const events = [...t.events].sort((a, b) => day(visibleDate(a)) - day(visibleDate(b))),
+          directMatch = containsTerms(
+            [p.name, p.description, p.details?.customer, p.details?.scope, t.name, t.description],
+            terms,
+          ),
+          matchingEvents = terms.length
+            ? events.filter((e) =>
+                containsTerms(
+                  [
+                    p.name,
+                    p.description,
+                    p.details?.customer,
+                    p.details?.scope,
+                    t.name,
+                    t.description,
+                    e.description,
+                    e.kind,
+                    e.done ? 'completed' : 'open',
+                    visibleDate(e),
+                    e.triggered,
+                    e.planned,
+                    e.scheduled,
+                    e.actual,
+                  ],
+                  terms,
+                ),
+              )
+            : [],
+          shown = (
+            terms.length && !directMatch && matchingEvents.length ? matchingEvents : events
+          ).slice(0, 8);
+        return `<a class="all-task-card" href="#/project/${p.id}"><div class="all-task-head"><strong dir="auto">${esc(t.name)}</strong><span dir="auto">${esc(p.name)}</span></div>${t.description ? `<p class="all-task-description" dir="auto">${esc(t.description)}</p>` : ''}<div class="all-task-track">${shown.length ? shown.map((e) => `<div class="all-task-point"><i class="${e.kind === 'fact' ? 'fact' : e.done ? 'done' : 'open'}"></i><span dir="auto">${esc(e.description)}</span><small>${shortDate(visibleDate(e))}</small></div>`).join('') : '<span class="muted">No activity yet</span>'}</div></a>`;
+      })
+      .join('') ||
+    (terms.length
+      ? '<p class="empty">No tasks match this search.</p>'
+      : '<p class="empty">No tasks yet. Create a project to get started.</p>');
   $('today-label').textContent = new Date(now + 'T12:00:00Z').toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -597,7 +720,10 @@ function renderPortfolio() {
 function renderProject() {
   const p = project(),
     d = p.details || {},
-    events = p.tasks.flatMap((t) => t.events);
+    events = p.tasks.flatMap((t) => t.events),
+    terms = searchTerms(),
+    matchingTasks = p.tasks.filter((t) => taskMatches(p, t, terms));
+  searchStatus(matchingTasks.length, terms);
   $('crumb-project').textContent = p.name;
   $('project-title').textContent = p.name;
   $('project-ref').textContent = d.customer || '';
@@ -614,16 +740,25 @@ function renderProject() {
       el.scrollLeft,
     ]),
   );
-  $('timeline-content').innerHTML = p.tasks.length
-    ? p.tasks
+  $('timeline-content').innerHTML = matchingTasks.length
+    ? matchingTasks
         .map(
           (t) =>
             `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><div class="task-heading"><span class="task-name" dir="auto">${esc(t.name)}</span>${t.description ? `<span class="task-description" dir="auto">${esc(t.description)}</span>` : ''}</div><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="button small" data-edit-task="${t.id}">Edit task</button><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
         )
         .join('')
-    : '<div class="empty-task">No tasks yet. Add a task to start its timeline.</div>';
+    : `<div class="empty-task">${terms.length ? 'No tasks match this search.' : 'No tasks yet. Add a task to start its timeline.'}</div>`;
   for (const el of $('timeline-content').querySelectorAll('.task-scroll'))
     el.scrollLeft = scrollPositions.get(el.dataset.scroll) || 0;
+  if (terms.length)
+    for (const t of matchingTasks) {
+      const first = t.events.find((event) => eventMatches(event, terms)),
+        node = first && geometry.get('main:' + t.id)?.nodes.get(first.id),
+        scroll = [...$('timeline-content').querySelectorAll('.task-scroll')].find(
+          (el) => el.dataset.scroll === t.id,
+        );
+      if (node && scroll) scroll.scrollLeft = Math.max(0, node.x - scroll.clientWidth * 0.45);
+    }
   $('undo').disabled = !undoStack.length;
   $('redo').disabled = !redoStack.length;
 }
@@ -1090,6 +1225,8 @@ let keepSiteState = false;
 window.addEventListener('hashchange', () => {
   if (focusedTask) closeTask();
   closeEditor();
+  projectInfoOpen = false;
+  $('workspace-search').value = '';
   // Messages belong to the screen they were shown on, unless go() set them for the next one.
   if (!keepSiteState) siteState = { email: siteState.email, note: '', error: '' };
   keepSiteState = false;
@@ -1544,7 +1681,8 @@ $('calendar-date').onchange = showCalendar;
 $('close-calendar').onclick = () => $('calendar-dialog').close();
 window.addEventListener('keydown', (e) => {
   const typing = e.target.matches('input,textarea,select,[contenteditable]'),
-    dialogOpen = document.querySelector('dialog[open]:not(#task-dialog)');
+    dialogOpen = document.querySelector('dialog[open]:not(#task-dialog)'),
+    editorWasOpen = !$('editor').hidden;
   if (
     (e.ctrlKey || e.metaKey) &&
     !typing &&
@@ -1557,7 +1695,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     hideHover();
-    if (!$('editor').hidden) {
+    if (editorWasOpen) {
       e.preventDefault();
       closeEditor();
     }
@@ -1566,6 +1704,21 @@ window.addEventListener('keydown', (e) => {
       drag = null;
       render();
       if (focusedTask) renderTaskDialog();
+    }
+    if (projectInfoOpen && !editorWasOpen && !dialogOpen) closeProjectInfo();
+  }
+  if (e.key === 'Tab' && projectInfoOpen && !editorWasOpen && !dialogOpen) {
+    const items = [...$('project-info').querySelectorAll('button,a,input,select,textarea')].filter(
+        (item) => !item.disabled && !item.closest('[hidden]'),
+      ),
+      first = items[0],
+      last = items.at(-1);
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   }
   if (e.key === 'Tab' && !$('editor').hidden) {
@@ -1599,8 +1752,8 @@ window.addEventListener('resize', () => {
     if (focusedTask) renderTaskDialog();
   }, 120);
 });
-function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })),
+function download(name, content, type = 'application/json') {
+  const url = URL.createObjectURL(new Blob([content], { type })),
     a = document.createElement('a');
   a.href = url;
   a.download = name;
@@ -1609,6 +1762,22 @@ function download(name, text) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+$('excel-export').onclick = () => {
+  const selected = view === 'portfolio' ? data.projects : [project()],
+    scope =
+      view === 'portfolio'
+        ? 'all-tasks'
+        : project()
+            .name.toLocaleLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || project().id;
+  download(
+    `revtimeline-${scope}-${today()}.xlsx`,
+    createExcelFile(selected),
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  );
+  toast(`Excel export downloaded for ${view === 'portfolio' ? 'All tasks' : project().name}.`);
+};
 $('export').onclick = () => {
   download(
     `revtimeline-backup-${today()}.json`,

@@ -28,6 +28,8 @@ Each task starts at its own first event and opens fitted to its full history. A 
 
 The workspace has an All tasks tab followed by one tab per project. Tasks within a project can be reordered. Activity points can be moved horizontally and vertically for presentation without changing their dates or connections; Tidy layout removes a task's manual offsets. The Hand tool pans horizontally within a task and vertically through the project page.
 
+The new task field appears before the tab bar. A Find field filters tasks in the current tab by project, task and activity text, and reveals matching activities on project timelines. The field clears when changing tabs. Export Excel downloads the full current tab, independent of the Find filter: all projects from All tasks, or only the active project from a project tab. The workbook includes project details, tasks, activities, payment terms and connections with numeric amounts and dates.
+
 When an event is added from an existing point, place it a readable distance after that point and reveal both in the task viewport, leaving space to the right. For example, adding an event one day after the last event should not push the new point against the viewport edge. This placement changes only the visual layout; the chosen date stays intact, and Tidy layout or Fit returns it to the date-based position.
 
 A task can be added from the top of the workspace with an explicit project choice; new tasks appear first. The task row offers editing for its name and optional description. Reordering shows an insertion placeholder before the order is saved. Connection lines and their controls follow a point throughout a drag. Hovering a connection shows the day interval from the two activity dates; an unfinished action makes this a scheduled interval. Fit resets both zoom and manual point offsets to the automatic date-based view. The event form can be dragged by its heading and scrolled within the viewport.
@@ -40,7 +42,9 @@ Ctrl+Z/Cmd+Z undo app changes; Ctrl+Shift+Z/Cmd+Shift+Z/Ctrl+Y redo them. Text f
 
 ## Project overview
 
-Each project can hold optional commercial details shown above the task timelines: customer, scope of supply, currency, value excluding VAT, VAT rate and payment terms (milestone, percentage and condition). VAT and the total including VAT are calculated automatically, rounded to two decimals, and only once a VAT rate has been entered; no rate is assumed. Payment terms may not exceed 100% in total; a lower total is allowed and flagged. Projects saved before this feature have no details and keep working unchanged. The other approved field groups remain in the backlog.
+Each project can hold optional commercial details: customer, scope of supply, currency, value excluding VAT, VAT rate and payment terms (milestone, percentage and condition). VAT and the total including VAT are calculated automatically, rounded to two decimals, and only once a VAT rate has been entered; no rate is assumed. Payment terms may not exceed 100% in total; a lower total is allowed and flagged. Projects saved before this feature have no details and keep working unchanged. The other approved field groups remain in the backlog.
+
+Project details, next actions and payment terms appear in a right information column on wide screens. On narrower screens they open in a right-side panel so the timeline retains its width.
 
 ## Persistence and limitations
 

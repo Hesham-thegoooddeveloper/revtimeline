@@ -83,7 +83,6 @@
       </aside>
 
       <main class="main">
-        <nav class="workspace-tabs" id="workspace-tabs" aria-label="Workspace views"></nav>
         <form class="quick-task" id="quick-task-form" aria-label="Add a task">
           <label for="quick-task-name">New task</label>
           <input
@@ -98,6 +97,25 @@
           <select id="quick-task-project" name="project" required></select>
           <button class="button primary" type="submit">Add task</button>
         </form>
+        <nav class="workspace-tabs" id="workspace-tabs" aria-label="Workspace views"></nav>
+        <div class="workspace-find">
+          <label for="workspace-search">Find</label>
+          <input
+            id="workspace-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Search tasks and activities"
+          />
+          <span id="search-status" role="status" aria-live="polite" hidden></span>
+          <button
+            class="button"
+            id="excel-export"
+            type="button"
+            title="Download all data in this tab as an Excel workbook"
+          >
+            Export Excel
+          </button>
+        </div>
         <div id="recovery" class="recovery" role="alert" hidden>
           <p id="recovery-text"></p>
           <button class="button small" id="recovery-download">Download unreadable data</button>
@@ -165,61 +183,99 @@
               <p id="project-description" dir="auto"></p>
             </div>
             <div class="actions">
-              <button class="button" id="edit-project">Edit details</button>
+              <button
+                class="button"
+                id="project-info-toggle"
+                type="button"
+                aria-controls="project-info"
+                aria-expanded="false"
+              >
+                Project info
+              </button>
               <button class="button primary" id="add-task">+ Add task</button>
             </div>
           </div>
-          <div class="tblock" id="overview" aria-label="Commercial summary"></div>
-
-          <section class="timeline" aria-label="Task timelines">
-            <div class="tl-tools">
-              <div class="tl-buttons">
-                <button class="button small" id="undo" aria-label="Undo last change">↶ Undo</button>
-                <button class="button small" id="redo" aria-label="Redo last change">↷ Redo</button>
-                <button
-                  class="button small"
-                  id="fit"
-                  title="Fit all timelines and align points by date"
+          <div class="project-layout">
+            <section class="timeline" aria-label="Task timelines">
+              <div class="tl-tools">
+                <div class="tl-buttons">
+                  <button class="button small" id="undo" aria-label="Undo last change">
+                    ↶ Undo
+                  </button>
+                  <button class="button small" id="redo" aria-label="Redo last change">
+                    ↷ Redo
+                  </button>
+                  <button
+                    class="button small"
+                    id="fit"
+                    title="Fit all timelines and align points by date"
+                  >
+                    Fit all
+                  </button>
+                  <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
+                </div>
+                <div class="keys">
+                  <span id="task-count"></span>
+                  <span><i class="key-fact"></i>Recorded event</span>
+                  <span><i class="key-open"></i>Action needed</span>
+                  <span><i class="key-done"></i>Completed action</span>
+                </div>
+              </div>
+              <div class="timeline-viewport" id="viewport">
+                <div class="timeline-content" id="timeline-content"></div>
+              </div>
+              <div class="tl-foot">
+                <span
+                  >Drag points to arrange · Drag from + to connect · Tidy layout resets each
+                  task</span
                 >
-                  Fit all
+                <span>Ctrl+Z to undo · Changes are saved in this browser</span>
+              </div>
+            </section>
+            <aside class="project-info" id="project-info" aria-label="Project information">
+              <div class="project-info-head">
+                <div>
+                  <span class="label">PROJECT</span>
+                  <h2>Project information</h2>
+                </div>
+                <button
+                  class="icon-button"
+                  id="project-info-close"
+                  type="button"
+                  aria-label="Close project information"
+                >
+                  ×
                 </button>
-                <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
               </div>
-              <div class="keys">
-                <span id="task-count"></span>
-                <span><i class="key-fact"></i>Recorded event</span>
-                <span><i class="key-open"></i>Action needed</span>
-                <span><i class="key-done"></i>Completed action</span>
+              <button class="button small project-info-edit" id="edit-project" type="button">
+                Edit details
+              </button>
+              <div class="tblock" id="overview" aria-label="Commercial summary"></div>
+              <div class="below">
+                <section class="panel" aria-labelledby="next-heading">
+                  <div class="panel-head">
+                    <h2 id="next-heading">Next actions</h2>
+                    <span class="muted" id="next-count"></span>
+                  </div>
+                  <div class="next" id="next-actions"></div>
+                </section>
+                <section class="panel" aria-labelledby="terms-heading">
+                  <div class="panel-head">
+                    <h2 id="terms-heading">Payment terms</h2>
+                    <span class="muted" id="terms-sum"></span>
+                  </div>
+                  <div class="terms" id="terms-panel"></div>
+                </section>
               </div>
-            </div>
-            <div class="timeline-viewport" id="viewport">
-              <div class="timeline-content" id="timeline-content"></div>
-            </div>
-            <div class="tl-foot">
-              <span
-                >Drag points to arrange · Drag from + to connect · Tidy layout resets each
-                task</span
-              >
-              <span>Ctrl+Z to undo · Changes are saved in this browser</span>
-            </div>
-          </section>
-
-          <div class="below">
-            <section class="panel" aria-labelledby="next-heading">
-              <div class="panel-head">
-                <h2 id="next-heading">Next actions</h2>
-                <span class="muted" id="next-count"></span>
-              </div>
-              <div class="next" id="next-actions"></div>
-            </section>
-            <section class="panel" aria-labelledby="terms-heading">
-              <div class="panel-head">
-                <h2 id="terms-heading">Payment terms</h2>
-                <span class="muted" id="terms-sum"></span>
-              </div>
-              <div class="terms" id="terms-panel"></div>
-            </section>
+            </aside>
           </div>
+          <button
+            class="project-info-scrim"
+            id="project-info-scrim"
+            type="button"
+            aria-label="Close project information"
+            hidden
+          ></button>
         </section>
       </main>
     </div>
