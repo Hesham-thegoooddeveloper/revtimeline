@@ -82,6 +82,8 @@ The original handoff is a historical reference. Later decisions in the requireme
 
 The site is published with GitHub Pages at https://revtimeline.tech. The `Publish site` workflow (`.github/workflows/pages.yml`) runs the checks and publishes `dist/` whenever `main` changes; work on other branches is not published. The domain is registered at Hostinger, whose DNS points it to GitHub Pages.
 
+GitHub Pages caches HTML and static assets for several minutes. When changing `dist/index.html` or its JavaScript/CSS, update the release query on its `app.mjs` and `style.css` links together so a new page fetches matching assets. The startup screen offers a cache-busting refresh if an older page cannot start.
+
 The earlier prototype, under the TrackFlow name, remains at https://trackflow-task-history.supersimpleengineeri.chatgpt.site (configured by `.openai/hosting.json`, which contains no credentials).
 
 The repository starts from the browser upload of the baseline; earlier commits mentioned in the change log were not uploaded. Future work should use descriptive commits and pull requests, with documentation updated alongside behavior changes. A change is live only after it is merged into `main` and the Publish site workflow succeeds.

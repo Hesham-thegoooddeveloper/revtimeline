@@ -7,13 +7,36 @@
     <title>RevTimeline</title>
     <meta name="description" content="Track the history of your projects, one event at a time." />
     <link rel="icon" href="favicon.svg" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=2026-10-10-startup-recovery" />
     <script>
       // Apply the saved colour mode before the first paint to avoid a flash.
       try {
         const mode = localStorage.getItem('trackflow-mode');
         if (mode === 'day' || mode === 'night') document.documentElement.dataset.mode = mode;
       } catch {}
+
+      // GitHub Pages can cache HTML and modules for different lengths of time after a release.
+      // Give people a way to refresh the whole release if startup throws or stalls.
+      function showStartupRecovery() {
+        const booting = document.getElementById('booting');
+        if (!booting || booting.hidden || booting.dataset.recovery) return;
+        booting.dataset.recovery = 'true';
+        const message = document.createElement('span');
+        message.textContent = 'RevTimeline could not finish loading.';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button primary';
+        button.textContent = 'Refresh the latest version';
+        button.onclick = () => {
+          const url = new URL(location.href);
+          url.searchParams.set('refresh', Date.now());
+          location.replace(url.href);
+        };
+        booting.replaceChildren(message, button);
+      }
+      addEventListener('error', showStartupRecovery);
+      addEventListener('unhandledrejection', showStartupRecovery);
+      setTimeout(showStartupRecovery, 12000);
     </script>
   </head>
   <body>
@@ -538,6 +561,6 @@
     <div id="hover-preview" role="tooltip" hidden></div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
     <script src="vendor/supabase.js"></script>
-    <script type="module" src="app.mjs"></script>
+    <script type="module" src="app.mjs?v=2026-10-10-startup-recovery"></script>
   </body>
 </html>
