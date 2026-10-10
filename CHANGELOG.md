@@ -1,5 +1,10 @@
 # Change log
 
+## Prepared startup recovery — 10 October 2026
+
+- Version the JavaScript and CSS links in the published HTML to avoid mixing release assets after a GitHub Pages deployment.
+- Show a cache-busting refresh button when startup throws or takes too long, instead of leaving the loading screen indefinitely.
+
 ## Right information panel and project identity — 10 October 2026
 
 - Reclaim the largely unused left rail and move calendar, colour mode and account controls into the header.
