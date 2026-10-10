@@ -7,7 +7,7 @@
     <title>RevTimeline</title>
     <meta name="description" content="Track the history of your projects, one event at a time." />
     <link rel="icon" href="favicon.svg" />
-    <link rel="stylesheet" href="style.css?v=2026-10-10-date-picker" />
+    <link rel="stylesheet" href="style.css?v=2026-10-10-flexible-dates" />
     <script>
       // Apply the saved colour mode before the first paint to avoid a flash.
       try {
@@ -403,10 +403,10 @@
           ><input type="checkbox" id="event-branch" /> Create a parallel branch</label
         >
         <details class="date-rules">
-          <summary>Date rules</summary>
-          <p>Connected activities may share a day, but a successor cannot be dated before its predecessor. An action with no target sits at its trigger date and is not overdue. A target or completion cannot be before its trigger. Editing a visible date shifts later unfinished actions’ dates by the same number of days; original target dates and completed records stay fixed.</p>
+          <summary>How dates work</summary>
+          <p>Choose any real calendar date for each activity. Connections show relationships, even when their dates run in a different order. Changing one activity’s date never changes another activity’s date. An action without a target appears at its trigger date and is not overdue.</p>
         </details>
-        <button type="button" id="add-sequence-from-event" class="button small">＋ Add several after this activity</button>
+        <button type="button" id="add-sequence-from-event" class="button small">＋ Add several around this activity</button>
         <p id="event-warning" class="warning" hidden></p>
         <div class="popup-actions">
           <button type="button" id="delete-event" class="button danger">Delete</button>
@@ -422,8 +422,12 @@
           <div><span class="label" id="batch-task" dir="auto"></span><h2>Add several activities</h2></div>
           <button class="icon-button" type="button" id="close-batch" aria-label="Close">×</button>
         </div>
-        <p class="popup-meta">Enter activities in connection order. They are saved together, so an invalid date leaves the whole list unchanged.</p>
-        <label>Connect after<select id="batch-source"></select></label>
+        <p class="popup-meta">Enter activities with their actual dates. Save them together in one step.</p>
+        <div class="batch-setup">
+          <label>Place around<select id="batch-source"></select></label>
+          <label>Connection order<select id="batch-order"><option value="date">Automatic by date</option><option value="entered">As entered</option></select></label>
+        </div>
+        <p class="popup-meta" id="batch-guide"></p>
         <div id="batch-rows"></div>
         <button class="button" type="button" id="batch-add-row">＋ Add another activity</button>
         <p class="warning" id="batch-warning" hidden></p>
@@ -607,6 +611,6 @@
     <div id="hover-preview" role="tooltip" hidden></div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
     <script src="vendor/supabase.js"></script>
-    <script type="module" src="app.mjs?v=2026-10-10-date-picker"></script>
+    <script type="module" src="app.mjs?v=2026-10-10-flexible-dates"></script>
   </body>
 </html>

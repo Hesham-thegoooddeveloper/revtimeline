@@ -1,5 +1,12 @@
 # Change log
 
+## Flexible activity dates and batch placement — 10 October 2026
+
+- Let connected activities and action dates be entered in any order; only missing or invalid calendar dates are rejected.
+- Keep every other activity’s date unchanged when one activity is edited.
+- Place batch activities by date around the selected activity by default, or connect them in entered order when chosen.
+- Insert Add before activities into the selected connection path regardless of date.
+
 ## Clearer date picking and add-before paths — 10 October 2026
 
 - Replace the browser date popup in activity forms and the calendar jump field with a consistent month picker; dates can also be entered as `YYYY-MM-DD`.

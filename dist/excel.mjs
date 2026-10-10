@@ -1,4 +1,4 @@
-import { projectTotals, visibleDate } from './model.mjs?v=2026-10-10-date-picker';
+import { projectTotals, visibleDate } from './model.mjs?v=2026-10-10-flexible-dates';
 
 const encoder = new TextEncoder();
 const xml = (value) =>

@@ -5,6 +5,7 @@ import {
   validateTask,
   canConnect,
   connectBefore,
+  connectBatch,
   migrate,
   visibleDate,
   removeEvent,
@@ -47,32 +48,36 @@ function task() {
     ],
   };
 }
-test('late completion shifts upcoming actions and preserves original dates and history', () => {
+test('late completion changes only the edited activity', () => {
   const t = task();
   assert.deepEqual(updateEvent(t, 'review', { done: true, actual: '2026-10-12' }), {
     delta: 2,
-    shifted: 2,
+    shifted: 0,
   });
-  assert.equal(t.events[2].scheduled, '2026-10-17');
-  assert.equal(t.events[3].scheduled, '2026-10-22');
+  assert.equal(t.events[2].scheduled, '2026-10-15');
+  assert.equal(t.events[3].scheduled, '2026-10-20');
   assert.equal(t.events[2].planned, '2026-10-15');
   assert.equal(t.events[0].occurred, '2026-10-08');
 });
-test('description edits do not shift dates and repeat date edits use incremental changes', () => {
+test('description and repeat date edits preserve all other dates', () => {
   const t = task();
   updateEvent(t, 'review', { done: true, actual: '2026-10-12' });
   assert.deepEqual(updateEvent(t, 'review', { description: 'Review done' }), {
     delta: 0,
     shifted: 0,
   });
-  assert.deepEqual(updateEvent(t, 'review', { actual: '2026-10-13' }), { delta: 1, shifted: 2 });
-  assert.equal(t.events[2].scheduled, '2026-10-18');
+  assert.deepEqual(updateEvent(t, 'review', { actual: '2026-10-13' }), { delta: 1, shifted: 0 });
+  assert.equal(t.events[2].scheduled, '2026-10-15');
 });
-test('invalid chronology rejects the whole update, including proposed shifts', () => {
-  const t = task(),
-    before = structuredClone(t);
-  assert(updateEvent(t, 'review', { done: true, actual: '2026-10-07' }).error);
-  assert.deepEqual(t, before);
+test('connected activities can have dates in either order', () => {
+  const t = task();
+  assert.deepEqual(updateEvent(t, 'review', { done: true, actual: '2026-10-07' }), {
+    delta: -3,
+    shifted: 0,
+  });
+  assert.equal(t.events[0].occurred, '2026-10-08');
+  assert.equal(t.events[2].scheduled, '2026-10-15');
+  assert.equal(validateTask(t), null);
 });
 test('connected and parallel activities may share a day without shifting dates', () => {
   const t = {
@@ -90,11 +95,17 @@ test('connected and parallel activities may share a day without shifting dates',
   };
   assert.equal(validateTask(parallel), null);
 });
-test('completion before trigger is rejected without changing data', () => {
-  const t = task(),
-    before = structuredClone(t);
-  assert(updateEvent(t, 'review', { done: true, actual: '2026-09-30' }).error);
-  assert.deepEqual(t, before);
+test('action target or completion may be earlier than its trigger', () => {
+  const t = task();
+  assert.deepEqual(updateEvent(t, 'review', { done: true, actual: '2026-09-30' }), {
+    delta: -10,
+    shifted: 0,
+  });
+  assert.equal(validateTask(t), null);
+  assert.deepEqual(updateEvent(t, 'revise', { scheduled: '2026-09-29' }), {
+    delta: -16,
+    shifted: 0,
+  });
 });
 test('an action can have no target date and uses its trigger date on the timeline', () => {
   const t = {
@@ -111,8 +122,8 @@ test('an action can have no target date and uses its trigger date on the timelin
   };
   assert.equal(visibleDate(t.events[1]), '2026-10-10');
   assert.equal(validateTask(t), null);
-  assert.deepEqual(updateEvent(t, 'start', { occurred: '2026-10-07' }), { delta: -1, shifted: 1 });
-  assert.equal(t.events[1].triggered, '2026-10-09');
+  assert.deepEqual(updateEvent(t, 'start', { occurred: '2026-10-07' }), { delta: -1, shifted: 0 });
+  assert.equal(t.events[1].triggered, '2026-10-10');
   assert.equal(t.events[1].scheduled, null);
 });
 test('branch merges cannot create loops or duplicate connections', () => {
@@ -153,22 +164,27 @@ test('old completed records migrate to occurrence dates without losing original 
   assert.equal(visibleDate(e), '2026-10-05');
   assert.equal(e.planned, '2026-10-03');
 });
-test('all sample task histories satisfy the current date rules', () => {
+test('all sample task histories contain real dates', () => {
   for (const t of sample.projects[0].tasks) assert.equal(validateTask(t), null, t.name);
 });
-test('moving an event earlier shifts upcoming actions back by the same difference', () => {
+test('moving an event earlier leaves upcoming actions unchanged', () => {
   const t = task();
   assert.deepEqual(updateEvent(t, 'review', { scheduled: '2026-10-09' }), {
     delta: -1,
-    shifted: 2,
+    shifted: 0,
   });
-  assert.equal(t.events[2].scheduled, '2026-10-14');
-  assert.equal(t.events[3].scheduled, '2026-10-19');
+  assert.equal(t.events[2].scheduled, '2026-10-15');
+  assert.equal(t.events[3].scheduled, '2026-10-20');
   assert.equal(t.events[2].planned, '2026-10-15');
 });
 test('changing a recorded event to an action and back keeps dates consistent', () => {
   const t = task();
-  updateEvent(t, 'past', { kind: 'action', done: false, scheduled: '2026-10-08' });
+  updateEvent(t, 'past', {
+    kind: 'action',
+    done: false,
+    scheduled: '2026-10-08',
+    triggered: '2026-10-08',
+  });
   assert.equal(t.events[0].actual, null);
   assert.equal(visibleDate(t.events[0]), '2026-10-08');
   updateEvent(t, 'past', { kind: 'fact', occurred: '2026-10-08' });
@@ -197,28 +213,26 @@ test('old unfinished records migrate to actions and migration is repeatable', ()
   migrate(data);
   assert.deepEqual(data, once);
 });
-// Current behavior pending owner confirmation: shifts are date-based, so upcoming actions on
-// unconnected parallel paths move too.
-test('date shifts include upcoming actions on unconnected parallel paths', () => {
+test('editing an event leaves actions on other paths unchanged', () => {
   const t = {
     events: [fact('x', '2026-10-10'), action('y', '2026-10-12'), action('z', '2026-10-20', 1)],
     edges: [['x', 'y']],
   };
-  assert.deepEqual(updateEvent(t, 'x', { occurred: '2026-10-11' }), { delta: 1, shifted: 2 });
-  assert.equal(t.events[2].scheduled, '2026-10-21');
+  assert.deepEqual(updateEvent(t, 'x', { occurred: '2026-10-11' }), { delta: 1, shifted: 0 });
+  assert.equal(t.events[2].scheduled, '2026-10-20');
 });
 
-test('moving an event earlier moves upcoming due and trigger dates together', () => {
+test('moving an event earlier leaves another action’s due and trigger dates intact', () => {
   const t = {
     events: [fact('x', '2026-10-10'), { ...action('y', '2026-10-15'), triggered: '2026-10-14' }],
     edges: [['x', 'y']],
   };
   assert.deepEqual(updateEvent(t, 'x', { occurred: '2026-10-05' }), {
     delta: -5,
-    shifted: 1,
+    shifted: 0,
   });
-  assert.equal(t.events[1].scheduled, '2026-10-10');
-  assert.equal(t.events[1].triggered, '2026-10-09');
+  assert.equal(t.events[1].scheduled, '2026-10-15');
+  assert.equal(t.events[1].triggered, '2026-10-14');
   assert.equal(t.events[1].planned, '2026-10-15');
   assert.equal(validateTask(t), null);
 });
@@ -244,20 +258,46 @@ test('adding before an event preserves all incoming paths and existing dates', (
     '2026-10-10',
   ]);
 });
-test('adding before a same-day predecessor keeps its date and starts another incoming path', () => {
+test('adding before a same-day predecessor inserts in the path without changing dates', () => {
   const t = {
     events: [fact('existing', '2026-10-10'), fact('target', '2026-10-10')],
     edges: [['existing', 'target']],
   };
   t.events.push(fact('before', '2026-10-09'));
-  assert.equal(connectBefore(t, 'before', 'target'), 'parallel');
+  assert.equal(connectBefore(t, 'before', 'target'), 'inserted');
   assert.deepEqual(t.edges, [
-    ['existing', 'target'],
+    ['existing', 'before'],
     ['before', 'target'],
   ]);
   assert.equal(t.events.find((event) => event.id === 'target').occurred, '2026-10-10');
-  assert.ok(t.events.find((event) => event.id === 'before').lane > 0);
   assert.equal(validateTask(t), null);
+});
+test('batch placement spans both sides of a selected activity', () => {
+  const t = { events: [fact('source', '2026-10-05')], edges: [] };
+  t.events.push(fact('before', '2026-10-01'), action('after', '2026-10-06'));
+  connectBatch(t, 'source', ['after', 'before'], 'date');
+  assert.deepEqual(t.edges, [
+    ['before', 'source'],
+    ['source', 'after'],
+  ]);
+  assert.deepEqual(t.events.map(visibleDate), ['2026-10-05', '2026-10-01', '2026-10-06']);
+  assert.equal(validateTask(t), null);
+});
+test('batch entered order accepts dates that run backward', () => {
+  const t = { events: [fact('source', '2026-10-05')], edges: [] };
+  t.events.push(fact('before', '2026-10-01'), action('after', '2026-10-06'));
+  connectBatch(t, 'source', ['before', 'after'], 'entered');
+  assert.deepEqual(t.edges, [
+    ['source', 'before'],
+    ['before', 'after'],
+  ]);
+  assert.equal(validateTask(t), null);
+});
+test('invalid calendar dates still reject a change without saving it', () => {
+  const t = task();
+  const original = structuredClone(t);
+  assert.match(updateEvent(t, 'past', { occurred: '2026-02-30' }).error, /real calendar date/);
+  assert.deepEqual(t, original);
 });
 test('validation errors name the event that is invalid', () => {
   const t = task();
@@ -265,7 +305,7 @@ test('validation errors name the event that is invalid', () => {
   assert.match(validateTask(t), /Legacy record/);
   const late = task();
   late.events[1].description = 'Review drawings';
-  assert.match(updateEvent(late, 'review', { scheduled: '2026-10-07' }).error, /Review drawings/);
+  assert.match(updateEvent(late, 'review', { scheduled: '2026-02-30' }).error, /Review drawings/);
 });
 test('migration tolerates projects and tasks with missing collections', () => {
   const data = migrate({ projects: [{ id: 'p', name: 'P' }] });
