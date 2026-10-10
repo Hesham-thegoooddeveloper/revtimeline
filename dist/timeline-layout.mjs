@@ -1,4 +1,4 @@
-import { day, visibleDate } from './model.mjs?v=2026-10-10-sameday-layout';
+import { day, visibleDate } from './model.mjs?v=2026-10-10-workflow-refresh';
 
 const PAD = 78;
 const MIN_GAP = 184;
@@ -43,7 +43,7 @@ export function timelineLayout(task, viewportWidth, zoom = 1) {
   const last = dates.at(-1) ?? first + 14;
   const baseGap = Math.max(MIN_GAP, (width - PAD * 2) / (MAX_COLUMNS_PER_VIEW - 1));
   const gap = (days) =>
-    Math.max(MIN_GAP, (baseGap + Math.min(baseGap / 2, Math.log2(Math.max(1, days)) * 24)) * zoom);
+    Math.max(0.25, (baseGap + Math.min(baseGap / 2, Math.log2(Math.max(1, days)) * 24)) * zoom);
   const columns = new Map();
   let right = PAD;
   for (let i = 0; i < dates.length; i++) {
@@ -79,6 +79,7 @@ export function timelineLayout(task, viewportWidth, zoom = 1) {
 
   const nodes = new Map();
   const lanes = [...new Set(task.events.map((event) => event.lane))].sort((a, b) => a - b);
+  const stackStep = zoom < 0.75 ? Math.max(18, STACK_STEP * zoom) : STACK_STEP;
   let laneTop = 0;
   for (const lane of lanes) {
     const groups = new Map();
@@ -92,11 +93,11 @@ export function timelineLayout(task, viewportWidth, zoom = 1) {
       const ordered = orderedSameDay(events, task.edges);
       deepest = Math.max(deepest, ordered.length);
       ordered.forEach((event, stack) => {
-        const labelY = laneTop + 16 + stack * STACK_STEP;
+        const labelY = laneTop + 16 + stack * stackStep;
         nodes.set(event.id, { x: columns.get(date), labelY, y: labelY + 70 });
       });
     }
-    laneTop += deepest * STACK_STEP + 30;
+    laneTop += deepest * stackStep + 30;
   }
   for (const event of task.events) {
     const node = nodes.get(event.id);
@@ -118,4 +119,17 @@ export function timelineLayout(task, viewportWidth, zoom = 1) {
     width: Math.max(width, right + 140, ...[...nodes.values()].map((node) => node.x + 140)),
     height: Math.max(172, laneTop + 12, ...[...nodes.values()].map((node) => node.y + 52)),
   };
+}
+
+export function fitTimelineZoom(task, viewportWidth) {
+  const width = Math.max(240, viewportWidth);
+  if (timelineLayout(task, width, 1).width <= width) return 1;
+  let low = 0.0001;
+  let high = 1;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const middle = (low + high) / 2;
+    if (timelineLayout(task, width, middle).width <= width) low = middle;
+    else high = middle;
+  }
+  return low;
 }

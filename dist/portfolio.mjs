@@ -1,4 +1,4 @@
-import { day } from './model.mjs?v=2026-10-10-sameday-layout';
+import { day } from './model.mjs?v=2026-10-10-workflow-refresh';
 
 // Summaries for the portfolio and project screens. `today` is a YYYY-MM-DD string.
 export function openActions(project) {
@@ -6,13 +6,15 @@ export function openActions(project) {
     task.events.filter((e) => e.kind === 'action' && !e.done).map((event) => ({ task, event })),
   );
 }
-const byDue = (a, b) => day(a.event.scheduled) - day(b.event.scheduled);
+const byDue = (a, b) =>
+  (a.event.scheduled ? day(a.event.scheduled) : Infinity) -
+  (b.event.scheduled ? day(b.event.scheduled) : Infinity);
 export function nextAction(project) {
   return openActions(project).sort(byDue)[0] || null;
 }
 export function projectStatus(project, today) {
   const open = openActions(project),
-    overdue = open.filter((x) => day(x.event.scheduled) < day(today)).length;
+    overdue = open.filter((x) => x.event.scheduled && day(x.event.scheduled) < day(today)).length;
   return {
     key: overdue ? 'overdue' : open.length ? 'on-track' : 'idle',
     overdue,
@@ -23,7 +25,7 @@ export function dueSoon(projects, today, days = 7) {
   const now = day(today);
   return projects
     .flatMap((project) => openActions(project).map((x) => ({ project, ...x })))
-    .filter((x) => day(x.event.scheduled) <= now + days)
+    .filter((x) => x.event.scheduled && day(x.event.scheduled) <= now + days)
     .sort(byDue)
     .map((x) => ({ ...x, late: day(x.event.scheduled) < now }));
 }

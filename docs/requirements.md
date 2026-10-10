@@ -7,14 +7,14 @@ This document describes the implemented prototype. Approved changes that are not
 Project → continuous task → events and connections. Submission, feedback and revision are events, not mandatory subtasks. Branches remain in the same task and can reconnect.
 
 - Recorded event: something happened; it has an occurrence date and no due date.
-- Action: something needs doing; it has a trigger date, current due date, original due date and actual completion date when done.
-- One visible timeline: recorded events use occurrence date, unfinished actions use current due date, and completed actions use actual completion date.
+- Action: something needs doing; it has a trigger date, an optional current target date, an original target date when one has been set, and an actual completion date when done.
+- One visible timeline: recorded events use occurrence date, unfinished actions use their target date or trigger date when no target is set, and completed actions use actual completion date.
 
 ## Date shifts and validation
 
-A visible-date change is measured against the previous visible date, not the original plan. Later unfinished actions in the same task shift by that exact difference, including upcoming actions on branches. Original due dates and other completed records remain unchanged. Description-only edits cause no shift.
+A visible-date change is measured against the previous visible date, not the original plan. Unfinished actions whose visible dates are on or after that previous date shift their trigger dates and any target dates by that exact difference, including upcoming actions on branches. Original target dates and other completed records remain unchanged. Description-only edits cause no shift.
 
-Apply changes on a trial copy. Reject the entire operation if it produces invalid chronology, a same-path same-date collision, or an action due/completion date before its trigger. Parallel paths can contain events on the same date. Do not silently repair history or partially apply a rejected shift.
+Dates must be real Gregorian calendar dates. A connected successor may share its predecessor's date but may not be earlier. An action's target or completion date cannot precede its trigger date. Actions without a target date stay open but are not overdue or due soon. Apply changes on a trial copy; reject the entire operation if it violates these rules. Do not silently repair history or partially apply a rejected shift.
 
 Connections cannot form loops. Reversing a displayed arrow changes relationship direction without changing dates or the structural order used in chronology validation.
 
@@ -28,7 +28,7 @@ Each task starts at its own first event with readable date spacing; longer histo
 
 The workspace has an All tasks tab followed by one tab per project. Tasks within a project can be reordered. Activity points can be moved horizontally and vertically for presentation without changing their dates or connections; Tidy layout removes a task's manual offsets. The Hand tool pans horizontally within a task and vertically through the project page.
 
-Activities on the same path may share a calendar day. Automatic layout stacks them vertically in connection order, with a newly connected same-day activity below its predecessor. At normal zoom, Tidy layout and Fit leave readable space between distinct dates and show at most about five date columns in a task viewport; longer histories scroll horizontally. Zoom controls let the user change that density without changing dates. A visual drag remains manual until Tidy or Fit resets its offset.
+Activities on the same path may share a calendar day. Automatic layout stacks them vertically in connection order, with a newly connected same-day activity below its predecessor. Tidy layout restores readable date spacing and scrolls longer histories. Fit clears manual offsets and compresses every date column into the task's horizontal viewport; at dense fit levels it shows points and connections without overlapping labels, and details remain available on hover and in the editor. Neither changes dates. Zoom controls let the user change that density without changing dates.
 
 The new task field appears before the tab bar. A Find field filters tasks in the current tab by project, task and activity text, and reveals matching activities on project timelines. The field clears when changing tabs. Export Excel downloads the full current tab, independent of the Find filter: all projects from All tasks, or only the active project from a project tab. The workbook includes project details, tasks, activities, payment terms and connections with numeric amounts and dates.
 
@@ -38,7 +38,9 @@ A task can be added from the top of the workspace with an explicit project choic
 
 Descriptions appear above the lines. Full details appear on hover and keyboard focus. Clicking opens an editor. Plus controls between nodes insert events; small node ports currently support adding, branching and merging. The latest request to remove most node-plus controls remains pending.
 
-My calendar is an optional daily view across projects, showing recorded events and active or overdue actions. It is separate from the default timeline overview.
+The event editor identifies its project and task, uses visual cards for recorded events and actions, and has a collapsible Date rules explanation. It opens near the top of the viewport, scrolls inside itself, and can still be dragged. Add before opens a new activity one day before the selected activity by default. Saving inserts it before that activity in the connection graph while keeping all existing activity dates. If the selected activity has incoming connections, they connect to the new activity, so its chosen date must be on or after those predecessors. A task-level Add several flow can collect a connected sequence of recorded events and actions, including untargeted actions, and save all of them in one atomic operation. A connection dialog lets the user reverse or delete a connection; the existing point handle can create a replacement connection.
+
+My calendar is an optional month view across projects, with activity markers, month navigation, a date picker and selected-day details. Selecting an activity opens it in its project. It is separate from the default timeline overview.
 
 Ctrl+Z/Cmd+Z undo app changes; Ctrl+Shift+Z/Cmd+Shift+Z/Ctrl+Y redo them. Text fields retain native text undo. App undo history lasts for the current session.
 

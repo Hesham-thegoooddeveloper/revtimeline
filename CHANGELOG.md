@@ -1,5 +1,14 @@
 # Change log
 
+## Add-before activity and clearer date rules — 10 October 2026
+
+- Add an activity before an existing one from its editor, keeping current activity dates and connections in order.
+- Show the project and task in the editor, explain date rules there, and display recorded events and actions as distinct visual choices.
+- Shift upcoming unfinished actions' trigger dates together with their due dates when an earlier visible date is edited, preserving original due dates and completed history.
+- Give each task a true Fit overview that places all date columns in its horizontal viewport, and keep Tidy as the readable scrolling view.
+- Let connections be deleted, actions omit their target date, and several activities be entered and saved together in one task form.
+- Move the event editor near the top of the screen, add a navigable month calendar with activity links, and soften corners across controls and panels.
+
 ## Prepared same-day and dense timeline layout — 10 October 2026
 
 - Allow connected activities on the same calendar day and insert another between same-day steps.

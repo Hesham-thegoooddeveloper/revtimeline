@@ -4,13 +4,14 @@ import {
   visibleDate,
   updateEvent,
   canConnect,
+  connectBefore,
   validateTask,
   removeEvent,
   migrate,
   checkData,
   projectTotals,
   termsPercent,
-} from './model.mjs?v=2026-10-10-sameday-layout';
+} from './model.mjs?v=2026-10-10-workflow-refresh';
 import { sample } from './sample.mjs';
 import {
   openActions,
@@ -18,12 +19,15 @@ import {
   projectStatus,
   contractValue,
   historyCounts,
-} from './portfolio.mjs?v=2026-10-10-sameday-layout';
+} from './portfolio.mjs?v=2026-10-10-workflow-refresh';
 import { createAccount } from './account.mjs';
 import { createSync } from './sync.mjs';
-import { createExcelFile } from './excel.mjs?v=2026-10-10-sameday-layout';
+import { createExcelFile } from './excel.mjs?v=2026-10-10-workflow-refresh';
 import { siteMarkup, friendlyError } from './site.mjs';
-import { timelineLayout } from './timeline-layout.mjs';
+import {
+  timelineLayout,
+  fitTimelineZoom,
+} from './timeline-layout.mjs?v=2026-10-10-workflow-refresh';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
   key = 'trackflow-prototype-v1',
@@ -353,10 +357,10 @@ function taskMarkup(t, width, surface = 'main') {
       // Arabic labels start at the right edge of their box and run leftward.
       labelAt = isRtl(e.description) ? `direction="rtl" x="${n.x + 62}"` : `x="${n.x - 62}"`,
       matched = terms.length && eventMatches(e, terms);
-    svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
+    svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="8"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : e.scheduled ? 'Action needed' : 'Action · no target'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
-    ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
+    ? `<svg class="task-canvas${b.zoom < 0.75 ? ' compact' : ''}" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
   return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit and align ${esc(t.name)} timeline" title="Fit and align points by date">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
@@ -568,8 +572,14 @@ function renderPortfolio() {
     ),
     actions = projects
       .flatMap((p) => openActions(p).map(({ task, event }) => ({ p, task, event })))
-      .sort((a, b) => day(a.event.scheduled) - day(b.event.scheduled)),
-    overdue = actions.filter(({ event }) => day(event.scheduled) < day(now)).length,
+      .sort(
+        (a, b) =>
+          (a.event.scheduled ? day(a.event.scheduled) : Infinity) -
+          (b.event.scheduled ? day(b.event.scheduled) : Infinity),
+      ),
+    overdue = actions.filter(
+      ({ event }) => event.scheduled && day(event.scheduled) < day(now),
+    ).length,
     values = contractValue(projects),
     valued = projects.filter((p) => Number.isFinite(p.details?.value)).length;
   searchStatus(matchingTasks.length, terms);
@@ -643,8 +653,8 @@ function renderPortfolio() {
     ? actions
         .slice(0, 6)
         .map(({ p, task, event }) => {
-          const late = day(event.scheduled) < day(now);
-          return `<a href="#/project/${p.id}"><strong dir="auto">${esc(event.description)}</strong><span class="${late ? 'late' : ''}">${late ? 'Was due ' : 'Due '}${dateLabel(event.scheduled)}</span><span><bdi>${esc(p.name)}</bdi> · <bdi>${esc(task.name)}</bdi></span></a>`;
+          const late = event.scheduled && day(event.scheduled) < day(now);
+          return `<a href="#/project/${p.id}"><strong dir="auto">${esc(event.description)}</strong><span class="${late ? 'late' : ''}">${event.scheduled ? `${late ? 'Was due ' : 'Target '}${dateLabel(event.scheduled)}` : 'No target date'}</span><span><bdi>${esc(p.name)}</bdi> · <bdi>${esc(task.name)}</bdi></span></a>`;
         })
         .join('') +
       (actions.length > 6 ? `<p class="empty">${actions.length - 6} more open actions.</p>` : '')
@@ -655,11 +665,11 @@ function renderPortfolio() {
       .map((p) => {
         const d = p.details || {},
           next = nextAction(p),
-          late = next && day(next.event.scheduled) < day(now);
+          late = next?.event.scheduled && day(next.event.scheduled) < day(now);
         return (
           `<a class="prow" href="#/project/${p.id}"><div class="nm"><b dir="auto">${esc(p.name)}</b><span dir="auto">${esc(d.customer || p.description || '')}</span></div>` +
           `<span>${statusChip(p)}</span>` +
-          `<div class="nx">${next ? `<b class="${late ? 'late' : ''}" dir="auto">${esc(next.event.description)}</b><span><bdi>${esc(next.task.name)}</bdi> · ${late ? 'was due' : 'due'} ${dateLabel(next.event.scheduled)}</span>` : '<span>No open actions</span>'}</div>` +
+          `<div class="nx">${next ? `<b class="${late ? 'late' : ''}" dir="auto">${esc(next.event.description)}</b><span><bdi>${esc(next.task.name)}</bdi> · ${next.event.scheduled ? `${late ? 'was due' : 'target'} ${dateLabel(next.event.scheduled)}` : 'no target date'}</span>` : '<span>No open actions</span>'}</div>` +
           spark(historyCounts(p)) +
           `<div class="val">${Number.isFinite(d.value) ? `${number(d.value)}<small>${esc(d.currency || '')}</small>` : '<small>Not set</small>'}</div></a>`
         );
@@ -693,7 +703,7 @@ function renderProject() {
     ? matchingTasks
         .map(
           (t) =>
-            `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><div class="task-heading"><span class="task-name" dir="auto">${esc(t.name)}</span>${t.description ? `<span class="task-description" dir="auto">${esc(t.description)}</span>` : ''}</div><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="button small" data-edit-task="${t.id}">Edit task</button><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
+            `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><div class="task-heading"><span class="task-name" dir="auto">${esc(t.name)}</span>${t.description ? `<span class="task-description" dir="auto">${esc(t.description)}</span>` : ''}</div><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="button small" data-add-sequence="${t.id}">Add several</button><button class="button small" data-edit-task="${t.id}">Edit task</button><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
         )
         .join('')
     : `<div class="empty-task">${terms.length ? 'No tasks match this search.' : 'No tasks yet. Add a task to start its timeline.'}</div>`;
@@ -767,15 +777,20 @@ function renderOverview(p) {
 }
 function renderNext(p) {
   const now = day(today()),
-    list = openActions(p).sort((a, b) => day(a.event.scheduled) - day(b.event.scheduled));
+    list = openActions(p).sort(
+      (a, b) =>
+        (a.event.scheduled ? day(a.event.scheduled) : Infinity) -
+        (b.event.scheduled ? day(b.event.scheduled) : Infinity),
+    );
   $('next-count').textContent = list.length ? `${list.length} open` : '';
   $('next-actions').innerHTML = list.length
     ? list
         .slice(0, 5)
         .map(({ task, event }) => {
-          const late = day(event.scheduled) < now,
-            moved = event.planned ? day(event.scheduled) - day(event.planned) : 0;
-          return `<button class="x${late ? ' late' : ''}" data-open-task="${task.id}" data-open-event="${event.id}"><i></i><b dir="auto">${esc(event.description)}</b><span class="when">${late ? 'Was due ' : ''}${dateLabel(event.scheduled)}</span><span><bdi>${esc(task.name)}</bdi>${moved ? ` · <span class="shift">moved ${moved > 0 ? '+' : '−'}${plural(Math.abs(moved), 'day')}</span>` : ''}</span></button>`;
+          const late = event.scheduled && day(event.scheduled) < now,
+            moved =
+              event.scheduled && event.planned ? day(event.scheduled) - day(event.planned) : 0;
+          return `<button class="x${late ? ' late' : ''}" data-open-task="${task.id}" data-open-event="${event.id}"><i></i><b dir="auto">${esc(event.description)}</b><span class="when">${event.scheduled ? `${late ? 'Was due ' : 'Target '}${dateLabel(event.scheduled)}` : 'No target date'}</span><span><bdi>${esc(task.name)}</bdi>${moved ? ` · <span class="shift">moved ${moved > 0 ? '+' : '−'}${plural(Math.abs(moved), 'day')}</span>` : ''}</span></button>`;
         })
         .join('') +
       (list.length > 5 ? `<p class="empty">And ${list.length - 5} more on the timeline.</p>` : '')
@@ -924,48 +939,67 @@ function openEditor(
   to = null,
 ) {
   hideHover();
-  lastFocus = document.activeElement;
+  const opening = $('editor').hidden;
+  if (opening) lastFocus = document.activeElement;
   editing = eid ? { tid, eid } : null;
   creating = eid ? null : { tid, from, to, branch };
   const t = taskBy(tid),
     e = eid ? t.events.find((x) => x.id === eid) : null;
+  $('editor-task').textContent = `${project().name} / ${t.name}`;
   $('editor-title').textContent = e ? 'Edit event' : 'New event';
   $('event-description').value = e?.description || '';
-  $('event-kind').value = e?.kind || 'fact';
+  document.querySelector(`input[name="event-kind"][value="${e?.kind || 'fact'}"]`).checked = true;
   $('event-done').checked = e?.done || false;
   $('event-date').value = e ? visibleDate(e) : suggested || today();
   $('event-trigger').value = e?.triggered || suggested || today();
   $('event-due').value = e?.scheduled || suggested || today();
+  $('event-has-target').checked = !!e?.scheduled;
   $('event-plan').value = e?.planned || '';
   $('plan-field').hidden = !e || e.kind === 'fact';
   $('branch-field').hidden = !!e || !from || !!to;
   $('event-branch').checked = branch;
   $('delete-event').hidden = !e;
+  $('add-before-event').hidden = !e;
+  $('add-sequence-from-event').hidden = !e;
+  $('event-position').hidden = !to || !!e;
+  if (to && !e) {
+    const target = t.events.find((item) => item.id === to),
+      predecessors = t.edges
+        .filter((edge) => edge[1] === to)
+        .map((edge) => t.events.find((item) => item.id === edge[0])),
+      earliest = predecessors.length
+        ? iso(Math.max(...predecessors.map((item) => day(visibleDate(item)))))
+        : null;
+    $('event-position').textContent = from
+      ? `Inserting between connected activities. Choose ${dateLabel(visibleDate(t.events.find((item) => item.id === from)))} through ${dateLabel(visibleDate(target))}, including either day.`
+      : earliest
+        ? `Adding before “${target.description}”. Choose ${dateLabel(earliest)} through ${dateLabel(visibleDate(target))}, including either day.`
+        : `Adding before “${target.description}” (${dateLabel(visibleDate(target))}). Choose the same day or an earlier date.`;
+  }
   $('event-warning').hidden = true;
   syncEditor();
   $('editor').hidden = false;
   $('editor-backdrop').hidden = false;
-  const r = anchor?.getBoundingClientRect(),
-    w = Math.min(420, innerWidth - 24),
-    h = $('editor').offsetHeight;
-  const left = r
-      ? Math.max(12, Math.min(innerWidth - w - 12, r.left - 70))
-      : Math.max(12, (innerWidth - w) / 2),
-    top = r
-      ? Math.max(12, Math.min(innerHeight - h - 12, r.bottom + 10))
-      : Math.max(12, (innerHeight - h) / 2);
-  $('editor').style.left = left + 'px';
-  $('editor').style.top = top + 'px';
+  if (opening) {
+    const w = Math.min(440, innerWidth - 24);
+    $('editor').style.left =
+      (innerWidth > 900 ? innerWidth - w - 24 : Math.max(12, (innerWidth - w) / 2)) + 'px';
+    $('editor').style.top =
+      Math.max(12, Math.min(28, innerHeight - $('editor').offsetHeight - 12)) + 'px';
+  }
   $('event-description').focus();
 }
+const selectedEventKind = () => document.querySelector('input[name="event-kind"]:checked').value;
 function syncEditor() {
-  const action = $('event-kind').value === 'action',
-    done = $('event-done').checked;
+  const action = selectedEventKind() === 'action',
+    done = $('event-done').checked,
+    hasTarget = action && $('event-has-target').checked;
   $('done-field').hidden = !action;
   $('trigger-field').hidden = !action;
-  $('due-field').hidden = !action;
+  $('target-toggle').hidden = !action;
+  $('due-field').hidden = !hasTarget;
   $('event-trigger').required = action;
-  $('event-due').required = action;
+  $('event-due').required = hasTarget;
   $('date-label').textContent = action ? 'Actual completion date' : 'Occurrence date';
   $('event-date').closest('label').hidden = action && !done;
   $('event-date').required = !action || done;
@@ -976,7 +1010,9 @@ function syncEditor() {
   $('event-meta').textContent = action
     ? original
       ? 'Original due: ' + dateLabel(original)
-      : 'The first due date is kept as the original plan.'
+      : hasTarget
+        ? 'The first target date is kept as the original plan.'
+        : 'No target date. This action appears on its trigger date.'
     : 'A recorded event has an occurrence date and no due date.';
 }
 function closeEditor() {
@@ -990,6 +1026,7 @@ function closeEditor() {
   lastFocus?.focus();
 }
 $('event-kind').onchange = syncEditor;
+$('event-has-target').onchange = syncEditor;
 $('event-done').onchange = () => {
   if ($('event-done').checked) $('event-date').value = today();
   syncEditor();
@@ -997,13 +1034,20 @@ $('event-done').onchange = () => {
 $('event-form').onsubmit = (ev) => {
   ev.preventDefault();
   const description = $('event-description').value.trim(),
-    kind = $('event-kind').value,
+    kind = selectedEventKind(),
     done = kind === 'fact' || $('event-done').checked,
     occurred = kind === 'fact' ? $('event-date').value : null,
     actual = done ? $('event-date').value : null,
-    scheduled = kind === 'action' ? $('event-due').value : occurred,
+    scheduled =
+      kind === 'action' ? ($('event-has-target').checked ? $('event-due').value : null) : occurred,
     triggered = kind === 'action' ? $('event-trigger').value : occurred;
-  if (!description || !scheduled || !triggered || (done && !actual)) return;
+  if (
+    !description ||
+    (kind === 'action' && $('event-has-target').checked && !scheduled) ||
+    !triggered ||
+    (done && !actual)
+  )
+    return;
   const ctx = editing || creating,
     tid = ctx.tid;
   const surface = focusedTask === tid ? 'modal' : 'main';
@@ -1022,14 +1066,16 @@ $('event-form').onsubmit = (ev) => {
           actual,
           scheduled,
           triggered,
-          planned: existing.kind === 'action' ? existing.planned : scheduled,
+          planned: existing.kind === 'action' ? existing.planned || scheduled : scheduled,
         });
         return (error = result.error);
       }
       const from = t.events.find((e) => e.id === creating.from),
         to = t.events.find((e) => e.id === creating.to),
         branch = $('event-branch').checked && !to,
-        lane = branch ? Math.max(0, ...t.events.map((e) => e.lane)) + 1 : from?.lane || 0,
+        lane = branch
+          ? Math.max(0, ...t.events.map((e) => e.lane)) + 1
+          : (from?.lane ?? to?.lane ?? 0),
         id = uid();
       const event = {
         id,
@@ -1051,6 +1097,7 @@ $('event-form').onsubmit = (ev) => {
         if (index >= 0) t.edges.splice(index, 1);
         t.edges.push([from.id, id, reverse], [id, to.id, reverse]);
       } else if (from) t.edges.push([from.id, id]);
+      else if (to) connectBefore(t, id, to.id);
       error = validateTask(t);
       if (!error) createdId = id;
       return error;
@@ -1070,6 +1117,133 @@ $('event-form').onsubmit = (ev) => {
 };
 $('close-editor').onclick = closeEditor;
 $('editor-backdrop').onclick = closeEditor;
+$('add-before-event').onclick = () => {
+  const { tid, eid } = editing;
+  const task = taskBy(tid),
+    target = task.events.find((event) => event.id === eid),
+    predecessors = task.edges
+      .filter((edge) => edge[1] === eid)
+      .map((edge) => task.events.find((event) => event.id === edge[0])),
+    earliest = Math.max(-Infinity, ...predecessors.map((event) => day(visibleDate(event)))),
+    suggested = iso(Math.max(day(visibleDate(target)) - 1, earliest));
+  openEditor(tid, null, null, false, $('add-before-event'), suggested, eid);
+};
+let batchTaskId = null;
+function syncBatchRow(row) {
+  const action = row.querySelector('.batch-type').value === 'action',
+    target = row.querySelector('.batch-has-target').checked,
+    done = row.querySelector('.batch-done').checked;
+  row.querySelector('.batch-target-toggle').hidden = !action;
+  row.querySelector('.batch-target-field').hidden = !action || !target;
+  row.querySelector('.batch-target').required = action && target;
+  row.querySelector('.batch-done-toggle').hidden = !action;
+  row.querySelector('.batch-actual-field').hidden = !action || !done;
+  row.querySelector('.batch-actual').required = action && done;
+  row.querySelector('.batch-date-label').textContent = action ? 'Trigger date' : 'Occurrence date';
+}
+function appendBatchRow(date) {
+  const row = document.createElement('fieldset');
+  row.className = 'batch-row';
+  row.innerHTML = `<legend>Activity <span class="batch-number"></span></legend><button class="icon-button batch-remove" type="button" aria-label="Remove activity">×</button><label>Description<input class="batch-description" required maxlength="220" dir="auto" placeholder="Describe the activity" /></label><div class="batch-fields"><label>Type<select class="batch-type"><option value="fact">● Recorded event</option><option value="action">○ Action needed</option></select></label><label><span class="batch-date-label">Occurrence date</span><input class="batch-date" type="date" required value="${date}" /></label></div><label class="check-label batch-target-toggle" hidden><input class="batch-has-target" type="checkbox" /> Set a target date</label><label class="batch-target-field" hidden>Target date<input class="batch-target" type="date" value="${date}" /></label><label class="check-label batch-done-toggle" hidden><input class="batch-done" type="checkbox" /> Completed</label><label class="batch-actual-field" hidden>Actual completion date<input class="batch-actual" type="date" value="${date}" /></label>`;
+  row.querySelector('.batch-type').onchange = () => syncBatchRow(row);
+  row.querySelector('.batch-has-target').onchange = () => syncBatchRow(row);
+  row.querySelector('.batch-done').onchange = () => syncBatchRow(row);
+  row.querySelector('.batch-remove').onclick = () => {
+    if ($('batch-rows').children.length === 1) return;
+    row.remove();
+    [...$('batch-rows').children].forEach(
+      (item, index) => (item.querySelector('.batch-number').textContent = index + 1),
+    );
+  };
+  $('batch-rows').append(row);
+  row.querySelector('.batch-number').textContent = $('batch-rows').children.length;
+  syncBatchRow(row);
+  return row;
+}
+function openBatch(tid, afterId = null) {
+  if (!$('editor').hidden) closeEditor();
+  batchTaskId = tid;
+  const task = taskBy(tid),
+    latest = [...task.events].sort((a, b) => day(visibleDate(b)) - day(visibleDate(a)))[0];
+  $('batch-task').textContent = `${project().name} / ${task.name}`;
+  $('batch-source').innerHTML =
+    `<option value="">Start an independent path</option>` +
+    task.events
+      .map(
+        (event) =>
+          `<option value="${event.id}">${esc(event.description)} · ${dateLabel(visibleDate(event))}</option>`,
+      )
+      .join('');
+  $('batch-source').value = afterId || latest?.id || '';
+  $('batch-rows').replaceChildren();
+  $('batch-warning').hidden = true;
+  const source = task.events.find((event) => event.id === $('batch-source').value);
+  appendBatchRow(source ? iso(day(visibleDate(source)) + 1) : today());
+  $('batch-dialog').showModal();
+  $('batch-rows').querySelector('.batch-description').focus();
+}
+$('add-sequence-from-event').onclick = () => {
+  const { tid, eid } = editing;
+  openBatch(tid, eid);
+};
+$('batch-add-row').onclick = () => {
+  const previous = $('batch-rows').lastElementChild.querySelector('.batch-date').value || today();
+  appendBatchRow(iso(day(previous) + 1))
+    .querySelector('.batch-description')
+    .focus();
+};
+$('close-batch').onclick = $('cancel-batch').onclick = () => $('batch-dialog').close();
+$('batch-form').onsubmit = (event) => {
+  event.preventDefault();
+  const rows = [...$('batch-rows').children],
+    sourceId = $('batch-source').value,
+    tid = batchTaskId;
+  let lastId, error;
+  const valid = commit(() => {
+    const task = taskBy(tid),
+      source = task.events.find((item) => item.id === sourceId),
+      lane = source
+        ? source.lane
+        : task.events.length
+          ? Math.max(...task.events.map((item) => item.lane)) + 1
+          : 0;
+    let prior = source?.id || null;
+    for (const row of rows) {
+      const kind = row.querySelector('.batch-type').value,
+        date = row.querySelector('.batch-date').value,
+        hasTarget = kind === 'action' && row.querySelector('.batch-has-target').checked,
+        scheduled =
+          kind === 'fact' ? date : hasTarget ? row.querySelector('.batch-target').value : null,
+        done = kind === 'fact' || row.querySelector('.batch-done').checked,
+        id = uid();
+      task.events.push({
+        id,
+        description: row.querySelector('.batch-description').value.trim(),
+        kind,
+        done,
+        occurred: kind === 'fact' ? date : null,
+        triggered: date,
+        scheduled,
+        planned: scheduled,
+        actual: kind === 'fact' ? date : done ? row.querySelector('.batch-actual').value : null,
+        lane,
+      });
+      if (prior) task.edges.push([prior, id]);
+      prior = id;
+      lastId = id;
+    }
+    error = validateTask(task);
+    return error;
+  });
+  if (!valid) {
+    $('batch-warning').textContent = error || 'The activities were not saved.';
+    $('batch-warning').hidden = false;
+    return;
+  }
+  $('batch-dialog').close();
+  revealNewEvent(tid, lastId, focusedTask === tid ? 'modal' : 'main');
+  toast(`${rows.length} ${rows.length === 1 ? 'activity' : 'activities'} saved`);
+};
 let movingEditor = null;
 $('editor')
   .querySelector('.popup-heading')
@@ -1223,10 +1397,11 @@ function openConnection(tid, index) {
 }
 function handleClick(e) {
   const target = e.target.closest(
-    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task],[data-edit-task]',
+    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task],[data-edit-task],[data-add-sequence]',
   );
   if (!target || drag) return;
-  if (target.dataset.editTask) openName('edit-task', target.dataset.editTask);
+  if (target.dataset.addSequence) openBatch(target.dataset.addSequence);
+  else if (target.dataset.editTask) openName('edit-task', target.dataset.editTask);
   else if (target.dataset.moveTask)
     moveTask(target.dataset.moveTask, Number(target.dataset.direction));
   else if (target.dataset.tidy)
@@ -1242,12 +1417,13 @@ function handleClick(e) {
     );
     target.dataset.surface === 'modal' ? renderTaskDialog() : render();
   } else if (target.dataset.fit) {
-    viewZoom[target.dataset.surface + ':' + target.dataset.fit] = 1;
     if (taskBy(target.dataset.fit).events.some((e) => e.layout))
       commit(() => {
         for (const event of taskBy(target.dataset.fit).events) delete event.layout;
       });
-    else target.dataset.surface === 'modal' ? renderTaskDialog() : render();
+    fitTask(target.dataset.fit, target.dataset.surface);
+    target.dataset.surface === 'modal' ? renderTaskDialog() : render();
+    resetFitScroll(target.dataset.fit, target.dataset.surface);
   } else if (target.dataset.expand) openTask(target.dataset.expand);
   else if (target.dataset.between !== undefined)
     insert(target.dataset.task, +target.dataset.between, target);
@@ -1351,16 +1527,27 @@ for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   container.addEventListener('focusout', hideHover);
   container.addEventListener('pointerdown', beginDrag);
 }
+function fitTask(tid, surface = 'main') {
+  const scroll = document.querySelector(
+    `.task-scroll[data-scroll="${tid}"][data-surface="${surface}"]`,
+  );
+  if (scroll) viewZoom[surface + ':' + tid] = fitTimelineZoom(taskBy(tid), scroll.clientWidth - 36);
+}
+function resetFitScroll(tid, surface = 'main') {
+  const scroll = document.querySelector(
+    `.task-scroll[data-scroll="${tid}"][data-surface="${surface}"]`,
+  );
+  if (scroll) scroll.scrollLeft = 0;
+}
 $('fit').onclick = () => {
-  viewZoom = {};
   if (project().tasks.some((t) => t.events.some((e) => e.layout)))
     commit(() => {
       for (const task of project().tasks) for (const event of task.events) delete event.layout;
     });
-  else {
-    render();
-    if (focusedTask) renderTaskDialog();
-  }
+  for (const task of project().tasks) fitTask(task.id);
+  render();
+  for (const task of project().tasks) resetFitScroll(task.id);
+  if (focusedTask) renderTaskDialog();
 };
 $('pan').onclick = () => {
   panning = !panning;
@@ -1375,6 +1562,14 @@ $('task-dialog').addEventListener('cancel', (e) => {
   closeTask();
 });
 $('close-connection').onclick = () => $('connection-dialog').close();
+$('delete-connection').onclick = () => {
+  const { tid, index } = connection;
+  $('connection-dialog').close();
+  commit(() => {
+    taskBy(tid).edges.splice(index, 1);
+  });
+  toast('Connection deleted. Drag from a + handle to reconnect.');
+};
 $('reverse-connection').onclick = () => {
   const c = { ...connection };
   commit(() => {
@@ -1394,7 +1589,7 @@ function showHover(e) {
     const t = taskBy(node.dataset.task),
       ev = t.events.find((x) => x.id === node.dataset.event);
     $('hover-preview').innerHTML =
-      `<strong dir="auto">${esc(ev.description)}</strong><span><bdi>${esc(t.name)}</bdi> · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Due <b>${dateLabel(ev.scheduled)}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original due <b>${dateLabel(ev.planned)}</b></div>`}`;
+      `<strong dir="auto">${esc(ev.description)}</strong><span><bdi>${esc(t.name)}</bdi> · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Target <b>${ev.scheduled ? dateLabel(ev.scheduled) : 'Not set'}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original target <b>${dateLabel(ev.planned)}</b></div>`}`;
   } else {
     const t = taskBy(edge.dataset.task),
       [a, b] = t.edges[Number(edge.dataset.edge)],
@@ -1601,8 +1796,48 @@ window.addEventListener('pointercancel', () => {
   if (focusedTask) renderTaskDialog();
 });
 function showCalendar() {
-  const date = $('calendar-date').value,
+  const date = $('calendar-date').value || today(),
     rows = [];
+  $('calendar-month').textContent = new Date(date.slice(0, 7) + '-01T12:00:00Z').toLocaleDateString(
+    'en-GB',
+    {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    },
+  );
+  $('calendar-selected-label').textContent = new Date(date + 'T12:00:00Z').toLocaleDateString(
+    'en-GB',
+    {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    },
+  );
+  const first = date.slice(0, 7) + '-01',
+    offset = (new Date(first + 'T12:00:00Z').getUTCDay() + 6) % 7,
+    gridStart = day(first) - offset,
+    end = day(
+      new Date(Date.UTC(+date.slice(0, 4), +date.slice(5, 7), 0)).toISOString().slice(0, 10),
+    ),
+    count = Math.ceil((end - gridStart + 1) / 7) * 7;
+  $('calendar-grid').innerHTML = Array.from({ length: count }, (_, index) => {
+    const current = iso(gridStart + index),
+      events = data.projects.flatMap((p) =>
+        p.tasks.flatMap((t) =>
+          t.events.filter(
+            (e) =>
+              (e.kind === 'fact' && e.occurred === current) ||
+              (e.kind === 'action' &&
+                (e.triggered === current || e.scheduled === current || e.actual === current)),
+          ),
+        ),
+      ),
+      recorded = events.some((e) => e.kind === 'fact'),
+      action = events.some((e) => e.kind === 'action');
+    return `<button class="calendar-day${current.slice(0, 7) === date.slice(0, 7) ? '' : ' outside'}${current === today() ? ' today' : ''}" data-calendar-day="${current}" aria-pressed="${current === date}" aria-label="${dateLabel(current)}, ${events.length} ${events.length === 1 ? 'activity' : 'activities'}"><span>${+current.slice(8)}</span><i class="calendar-dots">${recorded ? '<b class="fact"></b>' : ''}${action ? '<b class="action"></b>' : ''}</i></button>`;
+  }).join('');
   for (const p of data.projects)
     for (const t of p.tasks)
       for (const e of t.events) {
@@ -1616,8 +1851,8 @@ function showCalendar() {
               e.done && e.actual === date
                 ? 'Completed'
                 : e.scheduled === date
-                  ? 'Due today'
-                  : !e.done && e.scheduled < date
+                  ? 'Target today'
+                  : !e.done && e.scheduled && e.scheduled < date
                     ? 'Overdue action'
                     : 'Active action',
           });
@@ -1626,10 +1861,10 @@ function showCalendar() {
     ? rows
         .map(
           ({ p, t, e, label }) =>
-            `<div class="calendar-entry"><span><bdi>${esc(p.name)}</bdi> / <bdi>${esc(t.name)}</bdi></span><strong dir="auto">${esc(e.description)}</strong><small>${label}${e.kind === 'action' ? ' · Due ' + dateLabel(e.scheduled) : ''}</small></div>`,
+            `<button class="calendar-entry ${e.kind}" type="button" data-calendar-project="${p.id}" data-calendar-task="${t.id}" data-calendar-event="${e.id}"><i class="calendar-entry-dot"></i><div><span><bdi>${esc(p.name)}</bdi> / <bdi>${esc(t.name)}</bdi></span><strong dir="auto">${esc(e.description)}</strong><small>${label}${e.kind === 'action' ? (e.scheduled ? ' · Target ' + dateLabel(e.scheduled) : ' · No target date') : ''}</small></div></button>`,
         )
         .join('')
-    : '<p>No recorded events or active actions on this day.</p>';
+    : '<p class="calendar-empty">Nothing scheduled or recorded for this day.</p>';
 }
 $('calendar-nav').onclick = () => {
   $('calendar-date').value = today();
@@ -1637,6 +1872,42 @@ $('calendar-nav').onclick = () => {
   $('calendar-dialog').showModal();
 };
 $('calendar-date').onchange = showCalendar;
+$('calendar-grid').onclick = (event) => {
+  const button = event.target.closest('[data-calendar-day]');
+  if (!button) return;
+  $('calendar-date').value = button.dataset.calendarDay;
+  showCalendar();
+};
+$('calendar-results').onclick = (event) => {
+  const entry = event.target.closest('[data-calendar-event]');
+  if (!entry) return;
+  const {
+    calendarProject: projectId,
+    calendarTask: taskId,
+    calendarEvent: eventId,
+  } = entry.dataset;
+  $('calendar-dialog').close();
+  const open = () => openEditor(taskId, eventId);
+  if (view === 'project' && active === projectId) open();
+  else {
+    window.addEventListener('hashchange', () => requestAnimationFrame(open), { once: true });
+    location.hash = `#/project/${projectId}`;
+  }
+};
+for (const [id, change] of [
+  ['calendar-prev', -1],
+  ['calendar-next', 1],
+])
+  $(id).onclick = () => {
+    const selected = $('calendar-date').value || today(),
+      month = new Date(Date.UTC(+selected.slice(0, 4), +selected.slice(5, 7) - 1 + change, 1));
+    $('calendar-date').value = month.toISOString().slice(0, 10);
+    showCalendar();
+  };
+$('calendar-today').onclick = () => {
+  $('calendar-date').value = today();
+  showCalendar();
+};
 $('close-calendar').onclick = () => $('calendar-dialog').close();
 window.addEventListener('keydown', (e) => {
   const typing = e.target.matches('input,textarea,select,[contenteditable]'),
