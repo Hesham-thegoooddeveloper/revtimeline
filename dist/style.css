@@ -1221,6 +1221,76 @@ a.prow:hover {
 .task-scroll.panning .task-canvas {
   touch-action: none;
 }
+.fit-activity-index {
+  margin: 0 18px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--raise);
+}
+.fit-activity-index summary {
+  padding: 9px 12px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.fit-activity-index[open] summary {
+  border-bottom: 1px solid var(--rule-soft);
+}
+.fit-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 7px;
+  padding: 9px;
+}
+.fit-activity {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+.fit-activity:hover,
+.fit-activity:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.fit-activity.search-match {
+  border-color: var(--accent);
+}
+.fit-activity-mark {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+}
+.fit-activity.fact .fit-activity-mark {
+  border-color: var(--fact);
+  background: var(--fact);
+}
+.fit-activity-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.fit-activity-copy strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.fit-activity-copy small {
+  color: var(--muted);
+  font: 11px var(--mono);
+}
 .task-bottom {
   display: flex;
   justify-content: space-between;
@@ -1293,6 +1363,10 @@ a.prow:hover {
 }
 .task-canvas.compact .event-circle {
   stroke-width: 3;
+}
+.task-canvas .node.index-highlight .event-circle {
+  stroke: var(--ink);
+  stroke-width: 4;
 }
 .task-canvas .port,
 .task-canvas .before-port {

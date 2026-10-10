@@ -337,7 +337,8 @@ function edgeGeometry(n, m) {
 function taskMarkup(t, width, surface = 'main') {
   const b = bounds(t, Math.max(240, width), surface),
     terms = searchTerms(),
-    nodes = b.nodes;
+    nodes = b.nodes,
+    compact = b.zoom < 0.75;
   geometry.set(surface + ':' + t.id, b);
   let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
   for (let i = 0; i < t.edges.length; i++) {
@@ -360,9 +361,22 @@ function taskMarkup(t, width, surface = 'main') {
     svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="8"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : e.scheduled ? 'Action needed' : 'Action · no target'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="before-port" data-before="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add before ${esc(e.description)}" title="Add before"><circle class="hit" cx="${n.x - 26}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x - 26}" cy="${n.y}" r="7"/><text class="add-plus" x="${n.x - 26}" y="${n.y + 3.5}" text-anchor="middle" style="font-size:11px">+</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add after or branch from ${esc(e.description)}" title="Add after"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
-    ? `<svg class="task-canvas${b.zoom < 0.75 ? ' compact' : ''}" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
+    ? `<svg class="task-canvas${compact ? ' compact' : ''}" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
-  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit and align ${esc(t.name)} timeline" title="Fit and align points by date">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
+  const activityIndex = compact
+    ? `<details class="fit-activity-index" open><summary>All ${plural(t.events.length, 'activity')} · names and dates</summary><div class="fit-activity-grid">${[
+        ...t.events,
+      ]
+        .sort(
+          (a, c) => nodes.get(a.id).x - nodes.get(c.id).x || nodes.get(a.id).y - nodes.get(c.id).y,
+        )
+        .map(
+          (e) =>
+            `<button type="button" class="fit-activity ${e.kind}${terms.length && eventMatches(e, terms) ? ' search-match' : ''}" data-index-event="${e.id}" data-task="${t.id}" data-surface="${surface}" aria-label="Edit ${esc(e.description)}, ${dateLabel(visibleDate(e))}"><span class="fit-activity-mark" aria-hidden="true"></span><span class="fit-activity-copy"><strong dir="auto">${esc(e.description)}</strong><small>${e.kind === 'fact' ? 'Recorded' : e.done ? 'Completed' : 'Action'} · ${dateLabel(visibleDate(e))}</small></span></button>`,
+        )
+        .join('')}</div></details>`
+    : '';
+  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div>${activityIndex}<div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit and align ${esc(t.name)} timeline" title="Fit and align points by date">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
 const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
   money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
@@ -1402,7 +1416,7 @@ function openConnection(tid, index) {
 }
 function handleClick(e) {
   const target = e.target.closest(
-    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-before],[data-tidy],[data-move-task],[data-edit-task],[data-add-sequence]',
+    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-index-event],[data-before],[data-tidy],[data-move-task],[data-edit-task],[data-add-sequence]',
   );
   if (!target || drag) return;
   if (target.dataset.addSequence) openBatch(target.dataset.addSequence);
@@ -1437,6 +1451,8 @@ function handleClick(e) {
     openConnection(target.dataset.task, +target.dataset.edge);
   else if (target.dataset.event)
     openEditor(target.dataset.task, target.dataset.event, null, false, target);
+  else if (target.dataset.indexEvent)
+    openEditor(target.dataset.task, target.dataset.indexEvent, null, false, target);
 }
 function moveTask(id, step, toId = null, after = false) {
   const tasks = project().tasks,
@@ -1530,6 +1546,18 @@ for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   });
   container.addEventListener('pointerover', showHover);
   container.addEventListener('focusin', showHover);
+  const highlightIndex = (e, active) => {
+    const entry = e.target.closest('[data-index-event]');
+    if (!entry || (e.relatedTarget && entry.contains(e.relatedTarget))) return;
+    const node = [...entry.closest('.task-workspace').querySelectorAll('.node')].find(
+      (item) => item.dataset.event === entry.dataset.indexEvent,
+    );
+    node?.classList.toggle('index-highlight', active);
+  };
+  container.addEventListener('pointerover', (e) => highlightIndex(e, true));
+  container.addEventListener('pointerout', (e) => highlightIndex(e, false));
+  container.addEventListener('focusin', (e) => highlightIndex(e, true));
+  container.addEventListener('focusout', (e) => highlightIndex(e, false));
   container.addEventListener('pointerout', (e) => {
     if (!e.relatedTarget?.closest?.('[data-event],[data-edge]')) hideHover();
   });
