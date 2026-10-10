@@ -1,5 +1,11 @@
 # Change log
 
+## Readable activity details in Fit — 10 October 2026
+
+- Show every activity name and date in a responsive index below a densely fitted timeline, including the larger task window.
+- Open the activity editor from an index entry and highlight its point while the entry is hovered or focused.
+- Keep Fit's compact points and connections without changing activity dates.
+
 ## Flexible activity dates and batch placement — 10 October 2026
 
 - Let connected activities and action dates be entered in any order; only missing or invalid calendar dates are rejected.
