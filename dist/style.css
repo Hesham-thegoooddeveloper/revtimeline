@@ -70,7 +70,7 @@
   font-display: swap;
 }
 
-/* Layout: a fixed side rail and one working column. Day is the Drawing office palette
+/* Layout: a compact header and a contextual right information column. Day is the Drawing office palette
    (paper, ink, blue for recorded events, orange for actions); night uses the Night shift
    colours on the same structure. Auto follows the device; data-mode overrides it. */
 :root {
@@ -292,23 +292,44 @@ a {
   border-color: var(--ink);
 }
 
-/* Shell and rail */
+/* Workspace shell */
 .shell {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
 }
-.rail {
-  position: sticky;
-  top: 0;
-  height: 100vh;
+.workspace-header {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 20px 14px 16px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 32px;
   background: var(--rail);
-  border-inline-end: 1px solid var(--rule);
-  overflow-y: auto;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-header .logo {
+  margin: 0;
+  white-space: nowrap;
+}
+.workspace-header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.workspace-header-tools #account-action {
+  white-space: nowrap;
+}
+.workspace-header-tools .me {
+  max-width: 230px;
+}
+.workspace-header-tools .me > div {
+  min-width: 0;
+}
+.workspace-header-tools #account-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .logo {
   display: inline-flex;
@@ -337,83 +358,13 @@ a {
 .logo-end {
   fill: var(--accent);
 }
-.rail-nav {
-  display: grid;
-  gap: 2px;
-}
-.rail-link,
-.project-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 2px;
-  background: none;
-  color: var(--muted);
-  font-size: 13.5px;
-  text-align: start;
-  text-decoration: none;
-}
-.rail-link:hover,
-.project-link:hover {
-  color: var(--ink);
-}
-.rail-link[aria-current='page'],
-.project-link[aria-current='page'] {
-  background: var(--rail-on);
-  color: var(--ink);
-  font-weight: 600;
-}
-.rail-link .n {
-  font: 11px var(--mono);
-  color: var(--muted);
-}
-.rail-group {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 22px 4px 6px 10px;
-}
-.rail-add {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--raise);
-  color: var(--ink);
-  line-height: 1;
-}
-.project-nav {
-  display: grid;
-  gap: 1px;
-}
-.project-link span {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-.project-link i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--c, var(--hold));
-}
-.rail-foot {
-  margin-top: auto;
-  display: grid;
-  gap: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--rule);
-}
 .mode-switch {
   display: flex;
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--rule);
   border-radius: 2px;
+  min-width: 148px;
 }
 .mode-switch button {
   flex: 1;
@@ -456,7 +407,7 @@ a {
 /* Main column */
 .main {
   min-width: 0;
-  padding: 26px 32px 44px;
+  padding: 24px 32px 44px;
 }
 .workspace-tabs {
   display: flex;
@@ -465,7 +416,7 @@ a {
   overflow-x: auto;
   border-bottom: 1px solid var(--rule);
   margin-bottom: 12px;
-  max-width: 1480px;
+  max-width: 1900px;
   scrollbar-width: thin;
 }
 .quick-task {
@@ -473,7 +424,7 @@ a {
   align-items: end;
   gap: 10px;
   flex-wrap: wrap;
-  max-width: 1480px;
+  max-width: 1900px;
   margin: 0 0 14px;
   padding: 12px 16px;
   background: var(--raise);
@@ -501,7 +452,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 1480px;
+  max-width: 1900px;
   margin-bottom: 22px;
 }
 .workspace-find label[for='workspace-search'] {
@@ -552,10 +503,6 @@ a {
 }
 .add-tab {
   font-size: 20px;
-}
-.rail-group,
-.project-nav {
-  display: none;
 }
 .all-tasks {
   display: grid;
@@ -647,7 +594,7 @@ a {
 .view {
   display: grid;
   gap: 20px;
-  max-width: 1480px;
+  max-width: 1900px;
 }
 .page-head {
   display: flex;
@@ -768,40 +715,96 @@ a {
 }
 
 /* Portfolio */
-.kpis {
+.portfolio-layout,
+.project-layout {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--tb);
-  background: var(--raise);
-}
-.kpis > div {
-  display: grid;
-  gap: 6px;
-  padding: 14px 20px 16px;
-  border-inline-end: 1px solid var(--tb);
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 20px;
   min-width: 0;
 }
-.kpis > div:last-child {
-  border-inline-end: 0;
+.portfolio-main,
+.project-main {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+  min-width: 0;
 }
-.kpis strong {
-  font: 700 26px/1.1 var(--display);
-  font-stretch: 112%;
+.portfolio-summary {
+  display: grid;
+  gap: 10px;
+}
+.portfolio-summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  min-width: 0;
+}
+.portfolio-summary > div:first-child strong {
+  font: 700 34px/1 var(--display);
+}
+.portfolio-summary strong {
+  font: 680 21px/1.15 var(--display);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.kpis strong.bad {
+.portfolio-summary .value-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding-top: 7px;
+  border-top: 1px solid var(--rule-soft);
+}
+.portfolio-summary .value-line:first-of-type {
+  border-top: 0;
+}
+.portfolio-summary .value-line strong {
+  font-size: 18px;
+}
+.portfolio-summary small,
+.portfolio-summary .value-line span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.portfolio-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.portfolio-summary .portfolio-status > div {
+  display: grid;
+  gap: 4px;
+}
+.portfolio-status strong.bad {
   color: var(--bad);
 }
-.kpis small {
-  font-size: 12px;
-  color: var(--muted);
-}
-.portfolio-grid {
+.portfolio-next a {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  gap: 20px;
-  align-items: start;
+  gap: 4px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--rule-soft);
+  color: var(--ink);
+  text-decoration: none;
+}
+.portfolio-next a:last-child {
+  border-bottom: 0;
+}
+.portfolio-next a:hover {
+  background: var(--surface);
+}
+.portfolio-next a strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.portfolio-next a span {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.portfolio-next a .late {
+  color: var(--bad);
 }
 /* The table keeps readable columns and scrolls sideways inside its panel when space runs out. */
 .ptable {
@@ -977,37 +980,31 @@ a.prow:hover {
   text-align: start;
 }
 
-/* Project information stays beside the timeline only when there is room. */
-.project-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  align-items: start;
-  gap: 20px;
-  min-width: 0;
-}
-.project-info {
+/* The right column changes with the selected tab. */
+.context-info {
   position: sticky;
   top: 16px;
   display: grid;
   gap: 14px;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--rule);
   background: var(--raise);
   scrollbar-width: thin;
+  min-width: 0;
 }
-.project-info-head {
+.context-info-head {
   display: flex;
   justify-content: space-between;
   align-items: start;
   gap: 12px;
 }
-.project-info-head h2 {
+.context-info-head h2 {
   margin: 4px 0 0;
   font: 650 18px/1.2 var(--display);
 }
-.project-info-head .icon-button {
+.context-info-head .icon-button {
   display: none;
 }
 .project-info-edit {
@@ -1018,14 +1015,40 @@ a.prow:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 .project-info .tblock > div {
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 12px;
   border-inline-end: 0;
   border-bottom: 1px solid var(--tb);
+}
+.project-info .tblock > div .label {
+  align-self: start;
+}
+.project-info .tblock > div small {
+  grid-column: 2;
+}
+.project-info .tblock > div.value-primary {
+  grid-template-columns: 1fr;
+  padding: 16px 14px;
+  background: var(--surface);
+}
+.project-info .tblock > div.value-primary strong {
+  font-size: 26px;
+}
+.project-info .tblock > div.value-primary small {
+  grid-column: 1;
+}
+.project-info .tblock > div.scope-row {
+  grid-template-columns: 1fr;
 }
 .project-info .tblock > div:last-child {
   border-bottom: 0;
 }
 .project-info .tblock strong.text {
-  -webkit-line-clamp: 5;
+  display: block;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 .project-info .below {
   gap: 14px;
@@ -1037,10 +1060,11 @@ a.prow:hover {
   grid-column: 2;
   grid-row: auto;
 }
-.project-info-scrim {
+.context-info-scrim {
   display: none;
 }
-#project-info-toggle {
+#project-info-toggle,
+#portfolio-info-toggle {
   display: none;
 }
 .task-canvas .node.search-match .label-box {
@@ -1599,6 +1623,9 @@ legend {
   grid-template-columns: 1fr 1.4fr 1fr;
   gap: 0 12px;
 }
+.identity-grid {
+  grid-template-columns: 1fr 1.4fr;
+}
 .calc-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1754,10 +1781,6 @@ legend {
   font: 13px var(--mono);
   text-align: center;
 }
-.rail-foot #account-action {
-  justify-content: center;
-}
-
 /* Public site: landing page and account screens. */
 .site {
   min-height: 100vh;
@@ -2344,26 +2367,21 @@ a.button {
   font-size: 13px;
 }
 
-/* Narrow windows: the rail moves to the top. Desktop is the main target. */
-/* Medium windows: the due list moves under the projects table, and the summary
-   figures and lower panels use fewer columns. */
-@media (max-width: 1320px) {
-  .portfolio-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 1699px) {
+/* Keep both information panels available as drawers when the work area needs the width. */
+@media (max-width: 1499px) {
+  .portfolio-layout,
   .project-layout {
     grid-template-columns: minmax(0, 1fr);
   }
-  #project-info-toggle {
+  #project-info-toggle,
+  #portfolio-info-toggle {
     display: inline-flex;
   }
-  .project-info {
+  .context-info {
     position: fixed;
     z-index: 9;
     inset: 0 0 0 auto;
-    width: min(410px, 100vw);
+    width: min(430px, 100vw);
     max-height: none;
     padding: 22px;
     box-shadow: var(--shadow);
@@ -2373,14 +2391,14 @@ a.button {
       transform 180ms ease,
       visibility 180ms ease;
   }
-  .project-info.open {
+  .context-info.open {
     transform: translateX(0);
     visibility: visible;
   }
-  .project-info-head .icon-button {
+  .context-info-head .icon-button {
     display: inline-grid;
   }
-  .project-info-scrim:not([hidden]) {
+  .context-info-scrim:not([hidden]) {
     display: block;
     position: fixed;
     z-index: 8;
@@ -2392,15 +2410,6 @@ a.button {
   }
 }
 @media (max-width: 1120px) {
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .kpis > div:nth-child(2n) {
-    border-inline-end: 0;
-  }
-  .kpis > div:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--tb);
-  }
   .below {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2414,17 +2423,13 @@ a.button {
   }
 }
 @media (max-width: 900px) {
-  .shell {
-    grid-template-columns: 1fr;
+  .workspace-header {
+    flex-wrap: wrap;
+    padding: 14px 16px;
   }
-  .rail {
-    position: static;
-    height: auto;
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  .rail-foot {
-    margin-top: 16px;
+  .workspace-header-tools {
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
   .main {
     padding: 20px 16px 36px;
@@ -2439,17 +2444,20 @@ a.button {
     order: 3;
     flex: 1 1 100%;
   }
-  .kpis,
   .below,
-  .portfolio-grid {
+  .portfolio-layout {
     grid-template-columns: 1fr;
   }
-  .kpis > div {
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--tb);
+  .field-grid {
+    grid-template-columns: 1fr;
   }
-  .kpis > div:last-child {
-    border-bottom: 0;
+}
+@media (max-width: 600px) {
+  .workspace-header-tools .me {
+    display: none;
+  }
+  .workspace-header-tools .mode-switch {
+    min-width: 130px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -22,6 +22,8 @@ function filesIn(bytes) {
 
 test('Excel export includes only selected projects with typed amounts and dates', () => {
   const first = structuredClone(sample.projects[0]);
+  first.details.projectNumber = 'PRJ-101';
+  first.details.contractor = 'Example Contractor';
   const second = { id: 'beta', name: 'Project Beta', description: '', tasks: [] };
   const all = workbookSheets([first, second]);
   assert.deepEqual(
@@ -34,12 +36,15 @@ test('Excel export includes only selected projects with typed amounts and dates'
     all[2].rows.length,
     first.tasks.reduce((count, task) => count + task.events.length, 0),
   );
-  assert.equal(all[0].rows[0][5].value, 250000);
+  assert.equal(all[0].rows[0][2], 'PRJ-101');
+  assert.equal(all[0].rows[0][4], 'Example Contractor');
+  assert.equal(all[0].rows[0][7].value, 250000);
   assert.equal(all[2].rows[0][5].style, 2);
   const selected = filesIn(createExcelFile([first]));
   assert.ok(selected.has('[Content_Types].xml'));
   assert.ok(selected.get('xl/workbook.xml').includes('Payment terms'));
   assert.ok(selected.get('xl/worksheets/sheet1.xml').includes('Project Alpha'));
+  assert.ok(selected.get('xl/worksheets/sheet1.xml').includes('Example Contractor'));
   assert.ok(!selected.get('xl/worksheets/sheet1.xml').includes('Project Beta'));
   assert.match(selected.get('xl/worksheets/sheet3.xml'), /<c r="F2" s="2"><v>\d+<\/v><\/c>/);
 });

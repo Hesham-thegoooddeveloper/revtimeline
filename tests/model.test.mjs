@@ -222,6 +222,12 @@ test('saved and imported data must have a valid structure and safe IDs', () => {
   const badDetails = migrate(structuredClone(sample));
   badDetails.projects[0].details.value = '250000';
   assert.match(checkData(badDetails), /invalid project details/);
+  const extendedDetails = migrate(structuredClone(sample));
+  extendedDetails.projects[0].details.projectNumber = 'PRJ-101';
+  extendedDetails.projects[0].details.contractor = 'Example Contractor';
+  assert.equal(checkData(extendedDetails), null);
+  extendedDetails.projects[0].details.contractor = 42;
+  assert.match(checkData(extendedDetails), /invalid project details/);
   const badOccurrence = migrate(structuredClone(sample));
   badOccurrence.projects[0].tasks[0].events[0].occurred = '2026-02-30';
   assert.match(checkData(badOccurrence), /invalid details or dates/);

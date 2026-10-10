@@ -16,7 +16,6 @@ import {
   openActions,
   nextAction,
   projectStatus,
-  dueSoon,
   contractValue,
   historyCounts,
 } from './portfolio.mjs';
@@ -109,7 +108,7 @@ let active = data.projects[0].id,
   connection = null,
   viewZoom = {},
   quickProjectRoute = null,
-  projectInfoOpen = false,
+  infoOpen = false,
   undoStack = [],
   redoStack = [],
   pendingImport = null,
@@ -464,7 +463,6 @@ function render() {
   }
   document.title = 'RevTimeline';
   ensureActive();
-  renderRail();
   $('workspace-tabs').innerHTML =
     `<a href="#/portfolio" class="workspace-tab" ${view === 'portfolio' ? 'aria-current="page"' : ''}>All tasks <span>${data.projects.reduce((n, p) => n + p.tasks.length, 0)}</span></a>` +
     data.projects
@@ -495,7 +493,7 @@ function render() {
   $('project-view').hidden = view !== 'project';
   if (view === 'portfolio') renderPortfolio();
   else renderProject();
-  syncProjectInfo();
+  syncContextInfo();
 }
 const searchTerms = () =>
   $('workspace-search').value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
@@ -526,7 +524,9 @@ const taskMatches = (project, task, terms) =>
     [
       project.name,
       project.description,
+      project.details?.projectNumber,
       project.details?.customer,
+      project.details?.contractor,
       project.details?.scope,
       task.name,
       task.description,
@@ -547,49 +547,43 @@ function searchStatus(count, terms) {
   $('search-status').hidden = !terms.length;
   $('search-status').textContent = terms.length ? `${plural(count, 'matching task')}` : '';
 }
-function syncProjectInfo() {
-  const docked = matchMedia('(min-width: 1700px)').matches;
-  if (docked) projectInfoOpen = false;
-  const visible = screen === 'app' && view === 'project' && (docked || projectInfoOpen),
-    panel = $('project-info');
-  panel.classList.toggle('open', projectInfoOpen && !docked);
-  panel.inert = !visible;
-  panel.setAttribute('aria-hidden', String(!visible));
-  panel.setAttribute('role', projectInfoOpen ? 'dialog' : 'complementary');
-  if (projectInfoOpen) panel.setAttribute('aria-modal', 'true');
-  else panel.removeAttribute('aria-modal');
-  $('project-info-scrim').hidden = !projectInfoOpen || docked || view !== 'project';
-  $('project-info-toggle').setAttribute('aria-expanded', String(projectInfoOpen && !docked));
+function syncContextInfo() {
+  const docked = matchMedia('(min-width: 1500px)').matches;
+  if (docked) infoOpen = false;
+  for (const kind of ['portfolio', 'project']) {
+    const current = view === kind && screen === 'app',
+      open = current && infoOpen && !docked,
+      visible = current && (docked || open),
+      panel = $(`${kind}-info`);
+    panel.classList.toggle('open', open);
+    panel.inert = !visible;
+    panel.setAttribute('aria-hidden', String(!visible));
+    panel.setAttribute('role', open ? 'dialog' : 'complementary');
+    if (open) panel.setAttribute('aria-modal', 'true');
+    else panel.removeAttribute('aria-modal');
+    $(`${kind}-info-scrim`).hidden = !open;
+    $(`${kind}-info-toggle`).setAttribute('aria-expanded', String(open));
+  }
 }
-function closeProjectInfo() {
-  projectInfoOpen = false;
-  syncProjectInfo();
-  $('project-info-toggle').focus();
+function closeContextInfo() {
+  infoOpen = false;
+  syncContextInfo();
+  $(`${view}-info-toggle`).focus();
 }
-$('project-info-toggle').onclick = () => {
-  projectInfoOpen = true;
-  syncProjectInfo();
-  $('project-info-close').focus();
-};
-$('project-info-close').onclick = closeProjectInfo;
-$('project-info-scrim').onclick = closeProjectInfo;
+for (const kind of ['portfolio', 'project']) {
+  $(`${kind}-info-toggle`).onclick = () => {
+    infoOpen = true;
+    syncContextInfo();
+    $(`${kind}-info-close`).focus();
+  };
+  $(`${kind}-info-close`).onclick = closeContextInfo;
+  $(`${kind}-info-scrim`).onclick = closeContextInfo;
+}
 $('workspace-search').oninput = () => {
   if (screen !== 'app') return;
   if (view === 'portfolio') renderPortfolio();
   else renderProject();
 };
-function renderRail() {
-  const now = today();
-  if (view === 'portfolio') $('portfolio-nav').setAttribute('aria-current', 'page');
-  else $('portfolio-nav').removeAttribute('aria-current');
-  $('portfolio-count').textContent = data.projects.reduce((n, p) => n + p.tasks.length, 0);
-  $('project-nav').innerHTML = data.projects
-    .map(
-      (p) =>
-        `<a class="project-link" href="#/project/${p.id}"${view === 'project' && p.id === active ? ' aria-current="page"' : ''}><i class="${STATUS[projectStatus(p, now).key][0]}"></i><span dir="auto">${esc(p.name)}</span></a>`,
-    )
-    .join('');
-}
 function spark({ done, open }) {
   const total = done + open;
   if (!total) return '<span class="muted">No events</span>';
@@ -605,9 +599,6 @@ function spark({ done, open }) {
   }
   return `<svg class="spark" viewBox="0 0 110 14" role="img" aria-label="${done} finished, ${open} open"><path class="sl" d="M4 7h102"/>${dots}</svg>`;
 }
-function kpi(label, value, note, cls = '') {
-  return `<div><span class="label">${label}</span><strong class="${cls}">${value}</strong><small>${note}</small></div>`;
-}
 function renderPortfolio() {
   const now = today(),
     projects = data.projects,
@@ -615,11 +606,10 @@ function renderPortfolio() {
     matchingTasks = projects.flatMap((p) =>
       p.tasks.filter((t) => taskMatches(p, t, terms)).map((t) => ({ p, t })),
     ),
-    statuses = projects.map((p) => projectStatus(p, now)),
-    open = statuses.reduce((n, s) => n + s.open, 0),
-    overdue = statuses.reduce((n, s) => n + s.overdue, 0),
-    lateProjects = statuses.filter((s) => s.overdue).length,
-    soon = dueSoon(projects, now),
+    actions = projects
+      .flatMap((p) => openActions(p).map(({ task, event }) => ({ p, task, event })))
+      .sort((a, b) => day(a.event.scheduled) - day(b.event.scheduled)),
+    overdue = actions.filter(({ event }) => day(event.scheduled) < day(now)).length,
     values = contractValue(projects),
     valued = projects.filter((p) => Number.isFinite(p.details?.value)).length;
   searchStatus(matchingTasks.length, terms);
@@ -628,7 +618,16 @@ function renderPortfolio() {
       .map(({ p, t }) => {
         const events = [...t.events].sort((a, b) => day(visibleDate(a)) - day(visibleDate(b))),
           directMatch = containsTerms(
-            [p.name, p.description, p.details?.customer, p.details?.scope, t.name, t.description],
+            [
+              p.name,
+              p.description,
+              p.details?.projectNumber,
+              p.details?.customer,
+              p.details?.contractor,
+              p.details?.scope,
+              t.name,
+              t.description,
+            ],
             terms,
           ),
           matchingEvents = terms.length
@@ -637,7 +636,9 @@ function renderPortfolio() {
                   [
                     p.name,
                     p.description,
+                    p.details?.projectNumber,
                     p.details?.customer,
+                    p.details?.contractor,
                     p.details?.scope,
                     t.name,
                     t.description,
@@ -670,26 +671,24 @@ function renderPortfolio() {
     year: 'numeric',
     timeZone: 'UTC',
   });
-  $('kpis').innerHTML =
-    kpi(
-      'Projects',
-      projects.length,
-      lateProjects ? `${plural(lateProjects, 'project')} with overdue actions` : 'None overdue',
-    ) +
-    kpi('Open actions', open, `${soon.filter((x) => !x.late).length} due in the next 7 days`) +
-    kpi(
-      'Overdue actions',
-      overdue,
-      overdue ? `Across ${plural(lateProjects, 'project')}` : 'Nothing overdue',
-      overdue ? 'bad' : '',
-    ) +
-    kpi(
-      'Contract value',
-      values.length ? values.map((v) => esc(money(v.total, v.currency))).join('<br>') : '—',
-      values.length
-        ? `Excl. VAT · ${valued} of ${plural(projects.length, 'project')}`
-        : 'Add values in project details',
-    );
+  $('portfolio-summary').innerHTML =
+    `<div><span class="label">Total projects</span><strong>${projects.length}</strong><small>${plural(
+      projects.reduce((count, p) => count + p.tasks.length, 0),
+      'task',
+    )} across the workspace</small></div>` +
+    `<div><span class="label">Total project value · excl. VAT</span>${values.length ? values.map((v) => `<div class="value-line"><strong>${number(v.total)}</strong><span>${esc(v.currency || 'Currency not set')}</span></div>`).join('') : '<strong class="unset">—</strong>'}<small>${valued} of ${plural(projects.length, 'project')} have a value</small></div>` +
+    `<div class="portfolio-status"><div><span class="label">Open actions</span><strong>${actions.length}</strong></div><div><span class="label">Overdue</span><strong class="${overdue ? 'bad' : ''}">${overdue}</strong></div></div>`;
+  $('portfolio-next-count').textContent = actions.length ? `${actions.length} open` : '';
+  $('portfolio-next-actions').innerHTML = actions.length
+    ? actions
+        .slice(0, 6)
+        .map(({ p, task, event }) => {
+          const late = day(event.scheduled) < day(now);
+          return `<a href="#/project/${p.id}"><strong dir="auto">${esc(event.description)}</strong><span class="${late ? 'late' : ''}">${late ? 'Was due ' : 'Due '}${dateLabel(event.scheduled)}</span><span><bdi>${esc(p.name)}</bdi> · <bdi>${esc(task.name)}</bdi></span></a>`;
+        })
+        .join('') +
+      (actions.length > 6 ? `<p class="empty">${actions.length - 6} more open actions.</p>` : '')
+    : '<p class="empty">No open actions across these projects.</p>';
   $('project-table').innerHTML =
     '<div class="prow head"><span class="label">Project</span><span class="label">Status</span><span class="label">Next action</span><span class="label">History</span><span class="label end">Value excl. VAT</span></div>' +
     projects
@@ -706,16 +705,6 @@ function renderPortfolio() {
         );
       })
       .join('');
-  $('due-count').textContent = soon.length ? plural(soon.length, 'action') : '';
-  $('due-list').innerHTML = soon.length
-    ? soon
-        .map((x) => {
-          const [dd, mon] = shortDate(x.event.scheduled).split(' '),
-            lateBy = day(now) - day(x.event.scheduled);
-          return `<a class="d${x.late ? ' late' : ''}" href="#/project/${x.project.id}"><span class="dt"><b>${dd}</b>${mon}</span><div><bdi>${esc(x.event.description)}</bdi><span><bdi>${esc(x.project.name)}</bdi> · <bdi>${esc(x.task.name)}</bdi>${x.late ? ` · ${plural(lateBy, 'day')} late` : ''}</span></div></a>`;
-        })
-        .join('')
-    : '<p class="empty">Nothing is due in the next 7 days.</p>';
 }
 function renderProject() {
   const p = project(),
@@ -726,7 +715,7 @@ function renderProject() {
   searchStatus(matchingTasks.length, terms);
   $('crumb-project').textContent = p.name;
   $('project-title').textContent = p.name;
-  $('project-ref').textContent = d.customer || '';
+  $('project-ref').textContent = d.projectNumber ? `Project ${d.projectNumber}` : d.customer || '';
   $('project-status').innerHTML = statusChip(p);
   $('project-description').textContent = p.description || '';
   renderOverview(p);
@@ -767,34 +756,41 @@ function renderOverview(p) {
     totals = projectTotals(d),
     terms = d.paymentTerms || [],
     sum = termsPercent(d);
-  if (!d.customer && !d.scope && totals.value === null && !terms.length) {
-    $('overview').innerHTML =
-      '<div class="tblock-empty"><p>Add the customer, scope, value, VAT rate and payment terms to see the commercial summary here.</p><button class="button small" data-edit-project>Add project details</button></div>';
-  } else {
-    const cell = (label, value, note, cls = '') =>
-      `<div><span class="label">${label}</span><strong class="${cls}" dir="auto">${value}</strong><small>${note}</small></div>`;
-    $('overview').innerHTML =
-      cell('Customer', esc(d.customer || 'Not set'), '', d.customer ? 'text' : 'unset') +
-      cell('Scope', esc(d.scope || 'Not set'), '', d.scope ? 'text' : 'unset') +
-      cell(
-        'Value excl. VAT',
-        esc(money(totals.value, d.currency)),
-        d.currency ? esc(d.currency) : 'Currency not set',
-        totals.value === null ? 'unset' : '',
-      ) +
-      cell(
-        'VAT',
-        totals.rate === null ? 'Rate not set' : esc(money(totals.vat, d.currency)),
-        totals.rate === null ? 'Add a rate to calculate' : `${number(totals.rate)}% rate`,
-        totals.rate === null ? 'unset' : '',
-      ) +
-      cell(
-        'Total incl. VAT',
-        esc(money(totals.total, d.currency)),
-        totals.total === null ? 'Needs a value and VAT rate' : 'Calculated automatically',
-        totals.total === null ? 'unset' : '',
-      );
-  }
+  const cell = (label, value, note = '', cls = '', row = '') =>
+    `<div class="${row}"><span class="label">${label}</span><strong class="${cls}" dir="auto">${value}</strong>${note ? `<small>${note}</small>` : ''}</div>`;
+  $('overview').innerHTML =
+    cell(
+      'Project value · excl. VAT',
+      esc(money(totals.value, d.currency)),
+      totals.value === null ? 'Add the project value in Edit details' : 'Contract value before VAT',
+      totals.value === null ? 'unset' : '',
+      'value-primary',
+    ) +
+    cell(
+      'Project number',
+      esc(d.projectNumber || 'Not set'),
+      '',
+      d.projectNumber ? 'text' : 'unset',
+    ) +
+    cell('Customer', esc(d.customer || 'Not set'), '', d.customer ? 'text' : 'unset') +
+    cell('Contractor', esc(d.contractor || 'Not set'), '', d.contractor ? 'text' : 'unset') +
+    cell('Scope', esc(d.scope || 'Not set'), '', d.scope ? 'text' : 'unset', 'scope-row') +
+    cell(
+      'Total incl. VAT',
+      esc(money(totals.total, d.currency)),
+      totals.total === null
+        ? totals.value === null
+          ? 'Enter the project value and VAT rate to calculate'
+          : 'Add a VAT rate to calculate'
+        : '',
+      totals.total === null ? 'unset' : '',
+    ) +
+    cell(
+      'VAT',
+      totals.rate === null ? 'Rate not set' : esc(money(totals.vat, d.currency)),
+      totals.rate === null ? '' : `${number(totals.rate)}% rate`,
+      totals.rate === null ? 'unset' : '',
+    );
   $('terms-sum').textContent = terms.length ? `Adds up to ${number(sum)}%` : '';
   $('terms-panel').innerHTML = terms.length
     ? `<div class="bar" aria-hidden="true">${terms.map((t) => `<i style="width:${Math.max(0, t.percent || 0)}%"></i>`).join('')}${sum < 100 ? `<i class="rest" style="width:${100 - sum}%"></i>` : ''}</div>` +
@@ -873,7 +869,9 @@ function openProject() {
     d = p.details || {};
   $('project-name').value = p.name;
   $('project-summary-input').value = p.description || '';
+  $('project-number').value = d.projectNumber || '';
   $('project-customer').value = d.customer || '';
+  $('project-contractor').value = d.contractor || '';
   $('project-scope').value = d.scope || '';
   $('project-currency').value = d.currency || '';
   $('project-value').value = d.value ?? '';
@@ -919,7 +917,9 @@ $('project-form').onsubmit = (e) => {
     p.name = name;
     p.description = $('project-summary-input').value.trim();
     p.details = {
+      projectNumber: $('project-number').value.trim(),
       customer: $('project-customer').value.trim(),
+      contractor: $('project-contractor').value.trim(),
       scope: $('project-scope').value.trim(),
       currency: $('project-currency').value.trim().toUpperCase(),
       value: numberField('project-value'),
@@ -1175,7 +1175,6 @@ function openName(mode, tid = null) {
   $('name-dialog').showModal();
   $('name-input').focus();
 }
-$('new-project').onclick = () => openName('project');
 $('add-task').onclick = () => {
   $('quick-task-project').value = active;
   $('quick-task-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -1225,7 +1224,7 @@ let keepSiteState = false;
 window.addEventListener('hashchange', () => {
   if (focusedTask) closeTask();
   closeEditor();
-  projectInfoOpen = false;
+  infoOpen = false;
   $('workspace-search').value = '';
   // Messages belong to the screen they were shown on, unless go() set them for the next one.
   if (!keepSiteState) siteState = { email: siteState.email, note: '', error: '' };
@@ -1705,10 +1704,10 @@ window.addEventListener('keydown', (e) => {
       render();
       if (focusedTask) renderTaskDialog();
     }
-    if (projectInfoOpen && !editorWasOpen && !dialogOpen) closeProjectInfo();
+    if (infoOpen && !editorWasOpen && !dialogOpen) closeContextInfo();
   }
-  if (e.key === 'Tab' && projectInfoOpen && !editorWasOpen && !dialogOpen) {
-    const items = [...$('project-info').querySelectorAll('button,a,input,select,textarea')].filter(
+  if (e.key === 'Tab' && infoOpen && !editorWasOpen && !dialogOpen) {
+    const items = [...$(`${view}-info`).querySelectorAll('button,a,input,select,textarea')].filter(
         (item) => !item.disabled && !item.closest('[hidden]'),
       ),
       first = items[0],

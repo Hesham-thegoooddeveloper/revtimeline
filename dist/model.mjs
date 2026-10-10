@@ -60,7 +60,9 @@ function checkDetails(d) {
   return (
     typeof d === 'object' &&
     d !== null &&
+    text(d.projectNumber) &&
     text(d.customer) &&
+    text(d.contractor) &&
     text(d.scope) &&
     text(d.currency) &&
     num(d.value) &&

@@ -2,20 +2,20 @@
 
 RevTimeline (formerly TrackFlow) is a project-history application. Every revision, every approval, in order. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
 
-**Current stage:** interactive prototype, iteration 02 plus the first part of the commercial project overview, accounts and data-safety work (see the [change log](CHANGELOG.md)). GitHub Pages published the current `main` branch on 4 October 2026. The remaining project-information fields are planned for later implementation.
+**Current stage:** interactive prototype with project timelines, accounts, data-safety work and a growing commercial project overview (see the [change log](CHANGELOG.md)). The remaining project-information fields are planned for later implementation.
 
 ## Working prototype
 
 - Sign in with an email account (Google and LinkedIn once enabled) to keep the same projects on every device, or try it without an account in one browser. Accounts use Supabase; see supabase/schema.sql.
-- Start on an All tasks tab with tasks across projects, followed by a tab for each project. The portfolio summary below shows status, next action, history, value excluding VAT, and actions due in the next 7 days.
+- Start on an All tasks tab with tasks across projects, followed by a tab for each project. The right information panel shows the number of projects, value excluding VAT grouped by currency, and the next open actions.
 - Find tasks and activities within the current tab. The task field stays above the All tasks and project tabs.
 - Export the current tab to an Excel workbook with projects, tasks, activities, payment terms and connections. All tasks exports every project; a project tab exports only that project.
-- Work in a project workspace with task timelines, commercial details, next actions and payment terms.
-- Read project information beside the timeline on wide screens, or open it as a right-side panel on narrower screens.
+- Work in a project workspace with task timelines, commercial details, next actions and payment terms. Project number, customer, contractor, scope and value remain visible in the right information panel, including when a field has not been filled in yet.
+- Use the full timeline width reclaimed from the old left rail. Calendar, colour mode and account controls are in the header. The contextual right panel is docked on wide screens and opens as a drawer on narrower screens.
 - Switch between day and night modes, or follow the device setting.
 - Type in Arabic anywhere: names, descriptions and events display right to left. The interface itself is in English.
 - Create projects, tasks, recorded events and actions.
-- Edit a project overview: name, scope, customer, currency, value excluding VAT, VAT rate, automatically calculated VAT and total, and payment terms.
+- Edit a project overview: name, project number, customer, contractor, scope, currency, value excluding VAT, VAT rate, automatically calculated VAT and total, and payment terms.
 - Export all projects to a backup file and import one back, with validation and undo.
 - Keep a safety copy of saved data that cannot be read, instead of overwriting it.
 - Keep several open tabs in sync with each other.
@@ -34,7 +34,7 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 - Undo and redo application changes within the current session.
 - View recorded events and active actions through an optional daily calendar.
 
-The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving for guests or Supabase sync for signed-in accounts. There is no build step. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License. Sample data is fictitious. Clearing browser storage removes guest records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
+The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving for guests or Supabase sync for signed-in accounts. There is no build step. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License. Sample data is fictitious. Clearing browser storage removes guest records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Projects and tasks cannot yet be deleted.
 
 ## Run locally
 

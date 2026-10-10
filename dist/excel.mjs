@@ -71,7 +71,9 @@ export function workbookSheets(projects) {
     projectRows.push([
       project.name,
       project.description || '',
+      details.projectNumber || '',
       details.customer || '',
+      details.contractor || '',
       details.scope || '',
       details.currency || '',
       amount(totals.value),
@@ -125,7 +127,9 @@ export function workbookSheets(projects) {
       headers: [
         'Project',
         'Description',
+        'Project number',
         'Customer',
+        'Contractor',
         'Scope',
         'Currency',
         'Value excl. VAT',
