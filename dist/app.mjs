@@ -274,11 +274,11 @@ function restore(kind) {
   if (focusedTask) renderTaskDialog();
   toast(kind === 'undo' ? 'Last action undone' : 'Action redone');
 }
-function bounds(t, width, surface) {
+function bounds(t, width, surface, fixedZoom = null) {
   const dates = t.events.map((e) => day(visibleDate(e))),
     start = dates.length ? Math.min(...dates) : day(today()),
     end = dates.length ? Math.max(...dates) : start + 14,
-    zoom = viewZoom[surface + ':' + t.id] || 1,
+    zoom = fixedZoom ?? viewZoom[surface + ':' + t.id] ?? 1,
     pad = 78,
     span = Math.max(1, end - start),
     fitScale = Math.max(0.001, (width - pad * 2) / span),
@@ -293,6 +293,28 @@ function bounds(t, width, surface) {
     zoom,
     x: (s) => pad + (day(s) - start) * scale,
   };
+}
+function placeAfterSource(t, source, event, surface) {
+  const width =
+      surface === 'modal'
+        ? Math.max(300, $('task-dialog').clientWidth - 48)
+        : Math.max(240, $('viewport').clientWidth - 36),
+    b = bounds(t, width, surface, 1),
+    sourceX = Math.max(78, b.x(visibleDate(source)) + (source.layout?.dx || 0)),
+    naturalX = b.x(visibleDate(event));
+  // A newly connected event gets a readable gap without changing either date.
+  event.layout = {
+    dx: Math.round(Math.max(-5000, Math.min(5000, sourceX + 180 - naturalX))),
+    dy: 0,
+  };
+}
+function revealNewEvent(tid, eid, surface) {
+  const scroll = document.querySelector(
+      `.task-scroll[data-scroll="${tid}"][data-surface="${surface}"]`,
+    ),
+    node = geometry.get(surface + ':' + tid)?.nodes.get(eid);
+  if (!scroll || !node) return;
+  scroll.scrollLeft = Math.max(0, node.x - scroll.clientWidth + 180);
 }
 function icon(name) {
   return { expand: '⛶', fit: '↔', plus: '＋', minus: '−' }[name];
@@ -346,7 +368,10 @@ function taskMarkup(t, width, surface = 'main') {
     n.labelY += dy;
   }
   const height = Math.max(172, y + 12, ...[...nodes.values()].map((n) => n.y + 52)),
-    canvasWidth = Math.max(b.width, ...[...nodes.values()].map((n) => n.x + 90));
+    canvasWidth = Math.max(
+      b.width,
+      ...t.events.map((e) => nodes.get(e.id).x + (e.layout ? 180 : 90)),
+    );
   geometry.set(surface + ':' + t.id, { ...b, nodes });
   let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
   for (let i = 0; i < t.edges.length; i++) {
@@ -886,7 +911,9 @@ $('event-form').onsubmit = (ev) => {
   if (!description || !scheduled || !triggered || (done && !actual)) return;
   const ctx = editing || creating,
     tid = ctx.tid;
-  let result,
+  const surface = focusedTask === tid ? 'modal' : 'main';
+  let createdId,
+    result,
     error,
     valid = commit(() => {
       const t = taskBy(tid);
@@ -909,7 +936,7 @@ $('event-form').onsubmit = (ev) => {
         branch = $('event-branch').checked && !to,
         lane = branch ? Math.max(0, ...t.events.map((e) => e.lane)) + 1 : from?.lane || 0,
         id = uid();
-      t.events.push({
+      const event = {
         id,
         description,
         kind,
@@ -920,14 +947,18 @@ $('event-form').onsubmit = (ev) => {
         scheduled,
         actual,
         lane,
-      });
+      };
+      t.events.push(event);
+      if (from && !to) placeAfterSource(t, from, event, surface);
       if (from && to) {
         const index = t.edges.findIndex((e) => e[0] === from.id && e[1] === to.id),
           reverse = t.edges[index]?.[2] || false;
         if (index >= 0) t.edges.splice(index, 1);
         t.edges.push([from.id, id, reverse], [id, to.id, reverse]);
       } else if (from) t.edges.push([from.id, id]);
-      return (error = validateTask(t));
+      error = validateTask(t);
+      if (!error) createdId = id;
+      return error;
     });
   if (!valid) {
     $('event-warning').textContent = error || 'This change was not saved.';
@@ -935,6 +966,7 @@ $('event-form').onsubmit = (ev) => {
     return;
   }
   closeEditor();
+  if (createdId) revealNewEvent(tid, createdId, surface);
   toast(
     result?.shifted
       ? `Saved · ${result.shifted} upcoming actions shifted by ${Math.abs(result.delta)} days`
