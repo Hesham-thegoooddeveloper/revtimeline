@@ -464,7 +464,7 @@ a {
   align-items: stretch;
   overflow-x: auto;
   border-bottom: 1px solid var(--rule);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   max-width: 1480px;
   scrollbar-width: thin;
 }
@@ -474,7 +474,7 @@ a {
   gap: 10px;
   flex-wrap: wrap;
   max-width: 1480px;
-  margin: -8px 0 22px;
+  margin: 0 0 14px;
   padding: 12px 16px;
   background: var(--raise);
   border: 1px solid var(--rule);
@@ -496,6 +496,32 @@ a {
 }
 .quick-task button {
   white-space: nowrap;
+}
+.workspace-find {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1480px;
+  margin-bottom: 22px;
+}
+.workspace-find label[for='workspace-search'] {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+}
+.workspace-find input[type='search'] {
+  width: min(520px, 100%);
+  max-width: 520px;
+  flex: 1 1 300px;
+  margin: 0;
+}
+.workspace-find #search-status {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.workspace-find #excel-export {
+  margin-inline-start: auto;
 }
 .workspace-tab {
   flex: none;
@@ -949,6 +975,77 @@ a.prow:hover {
   font-size: 11.5px;
   text-decoration: underline;
   text-align: start;
+}
+
+/* Project information stays beside the timeline only when there is room. */
+.project-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  align-items: start;
+  gap: 20px;
+  min-width: 0;
+}
+.project-info {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  background: var(--raise);
+  scrollbar-width: thin;
+}
+.project-info-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+.project-info-head h2 {
+  margin: 4px 0 0;
+  font: 650 18px/1.2 var(--display);
+}
+.project-info-head .icon-button {
+  display: none;
+}
+.project-info-edit {
+  justify-self: start;
+}
+.project-info .tblock,
+.project-info .below {
+  grid-template-columns: minmax(0, 1fr);
+}
+.project-info .tblock > div {
+  border-inline-end: 0;
+  border-bottom: 1px solid var(--tb);
+}
+.project-info .tblock > div:last-child {
+  border-bottom: 0;
+}
+.project-info .tblock strong.text {
+  -webkit-line-clamp: 5;
+}
+.project-info .below {
+  gap: 14px;
+}
+.project-info .next .x {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.project-info .next .x .when {
+  grid-column: 2;
+  grid-row: auto;
+}
+.project-info-scrim {
+  display: none;
+}
+#project-info-toggle {
+  display: none;
+}
+.task-canvas .node.search-match .label-box {
+  stroke: var(--accent);
+  stroke-width: 2.5;
 }
 
 /* Timeline panel */
@@ -2255,6 +2352,45 @@ a.button {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+@media (max-width: 1699px) {
+  .project-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #project-info-toggle {
+    display: inline-flex;
+  }
+  .project-info {
+    position: fixed;
+    z-index: 9;
+    inset: 0 0 0 auto;
+    width: min(410px, 100vw);
+    max-height: none;
+    padding: 22px;
+    box-shadow: var(--shadow);
+    transform: translateX(105%);
+    visibility: hidden;
+    transition:
+      transform 180ms ease,
+      visibility 180ms ease;
+  }
+  .project-info.open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  .project-info-head .icon-button {
+    display: inline-grid;
+  }
+  .project-info-scrim:not([hidden]) {
+    display: block;
+    position: fixed;
+    z-index: 8;
+    inset: 0;
+    width: 100%;
+    border: 0;
+    background: rgb(0 0 0 / 42%);
+    cursor: default;
+  }
+}
 @media (max-width: 1120px) {
   .kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2276,17 +2412,6 @@ a.button {
   .prow > :nth-child(4) {
     display: none;
   }
-  /* Title block: customer and scope on the first row, the three amounts on the second. */
-  .tblock {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .tblock > div:nth-child(2):not(.tblock-empty) {
-    grid-column: span 2;
-    border-inline-end: 0;
-  }
-  .tblock > div:nth-child(-n + 2):not(.tblock-empty) {
-    border-bottom: 1px solid var(--tb);
-  }
 }
 @media (max-width: 900px) {
   .shell {
@@ -2303,6 +2428,16 @@ a.button {
   }
   .main {
     padding: 20px 16px 36px;
+  }
+  .workspace-find {
+    flex-wrap: wrap;
+  }
+  .workspace-find input[type='search'] {
+    flex: 1 1 70%;
+  }
+  .workspace-find #search-status {
+    order: 3;
+    flex: 1 1 100%;
   }
   .kpis,
   .below,

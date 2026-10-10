@@ -32,8 +32,8 @@ Provide project creation and editing with the following approved field groups:
 
 Treat PO value and project value as one amount initially unless approved variations make separate figures necessary. No VAT rate has been supplied; do not silently assume one.
 
-Show a compact overview above the task timelines, with fuller information under Project details. The overview direction was approved using fictitious sample data; sample customers, money values, terms and dates are not real requirements.
+The existing commercial overview, next actions and payment terms now appear in a right-side project information panel. It is docked on wide screens and opens as a drawer on narrower screens. A fuller Project details view with the remaining fields is still pending. The overview direction was approved using fictitious sample data; sample customers, money values, terms and dates are not real requirements.
 
 ## Later milestones
 
-Dependable saving, backup/restore and recovery testing precede critical personal use. Backup export/import, unreadable-data preservation and tab sync are now implemented; recovery testing with real usage remains. Later possibilities include search, attachments, reports, analysis and AI summaries. Multi-user organizations, roles, cross-device access and subscriptions require separate validation and release planning.
+Dependable saving, backup/restore and recovery testing precede critical personal use. Backup export/import, unreadable-data preservation and tab sync are now implemented; recovery testing with real usage remains. Task and activity search and tab-scoped Excel export are implemented. Later possibilities include attachments, reports, analysis and AI summaries. Multi-user organizations, roles, cross-device access and subscriptions require separate validation and release planning.

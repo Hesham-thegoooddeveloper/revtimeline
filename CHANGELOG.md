@@ -1,5 +1,12 @@
 # Change log
 
+## Search, project information and Excel export — 10 October 2026
+
+- Put the new task field above the All tasks and project tabs.
+- Add Find to filter tasks and locate matching activities in the current tab.
+- Move project details, next actions and payment terms into a right information column on wide screens and a button-opened panel on narrower screens.
+- Export the current tab to a typed Excel workbook. All tasks includes every project; a project tab includes only that project. JSON backup export remains available separately.
+
 ## Task interaction refinements — 10 October 2026
 
 - Place newly connected activities just after their source with room to the right, and bring both into view after saving. Their dates remain unchanged; Tidy layout or Fit restores date-based spacing.

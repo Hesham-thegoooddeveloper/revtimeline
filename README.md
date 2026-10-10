@@ -8,7 +8,10 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 
 - Sign in with an email account (Google and LinkedIn once enabled) to keep the same projects on every device, or try it without an account in one browser. Accounts use Supabase; see supabase/schema.sql.
 - Start on an All tasks tab with tasks across projects, followed by a tab for each project. The portfolio summary below shows status, next action, history, value excluding VAT, and actions due in the next 7 days.
-- Work in a project workspace with a commercial title block, full-width task timelines, next actions and payment terms.
+- Find tasks and activities within the current tab. The task field stays above the All tasks and project tabs.
+- Export the current tab to an Excel workbook with projects, tasks, activities, payment terms and connections. All tasks exports every project; a project tab exports only that project.
+- Work in a project workspace with task timelines, commercial details, next actions and payment terms.
+- Read project information beside the timeline on wide screens, or open it as a right-side panel on narrower screens.
 - Switch between day and night modes, or follow the device setting.
 - Type in Arabic anywhere: names, descriptions and events display right to left. The interface itself is in English.
 - Create projects, tasks, recorded events and actions.
