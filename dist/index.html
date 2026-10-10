@@ -84,6 +84,20 @@
 
       <main class="main">
         <nav class="workspace-tabs" id="workspace-tabs" aria-label="Workspace views"></nav>
+        <form class="quick-task" id="quick-task-form" aria-label="Add a task">
+          <label for="quick-task-name">New task</label>
+          <input
+            id="quick-task-name"
+            name="name"
+            maxlength="80"
+            required
+            placeholder="Task name"
+            dir="auto"
+          />
+          <label for="quick-task-project">Project</label>
+          <select id="quick-task-project" name="project" required></select>
+          <button class="button primary" type="submit">Add task</button>
+        </form>
         <div id="recovery" class="recovery" role="alert" hidden>
           <p id="recovery-text"></p>
           <button class="button small" id="recovery-download">Download unreadable data</button>
@@ -162,7 +176,13 @@
               <div class="tl-buttons">
                 <button class="button small" id="undo" aria-label="Undo last change">↶ Undo</button>
                 <button class="button small" id="redo" aria-label="Redo last change">↷ Redo</button>
-                <button class="button small" id="fit">Fit all</button>
+                <button
+                  class="button small"
+                  id="fit"
+                  title="Fit all timelines and align points by date"
+                >
+                  Fit all
+                </button>
                 <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
               </div>
               <div class="keys">
@@ -205,6 +225,7 @@
     </div>
 
     <div id="editor-backdrop" class="backdrop" hidden></div>
+    <div id="drag-cue" hidden></div>
     <section
       id="editor"
       class="event-popup"
@@ -272,7 +293,7 @@
           >Description<input id="name-description" maxlength="180" dir="auto"
         /></label>
         <div class="popup-actions">
-          <button class="button primary" type="submit">Create</button>
+          <button class="button primary" id="name-submit" type="submit">Create</button>
         </div>
       </form>
     </dialog>

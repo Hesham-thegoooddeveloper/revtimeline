@@ -101,11 +101,13 @@ let active = data.projects[0].id,
   focusedTask = null,
   lastFocus = null,
   nameMode = 'task',
+  editingTaskId = null,
   drag = null,
   panning = false,
   toastTimer,
   connection = null,
   viewZoom = {},
+  quickProjectRoute = null,
   undoStack = [],
   redoStack = [],
   pendingImport = null,
@@ -295,6 +297,16 @@ function bounds(t, width, surface) {
 function icon(name) {
   return { expand: '⛶', fit: '↔', plus: '＋', minus: '−' }[name];
 }
+function edgeGeometry(n, m) {
+  const ax = n.x + 9,
+    cx = m.x - 9,
+    mid = (ax + cx) / 2;
+  return {
+    path: `M ${ax} ${n.y} C ${mid} ${n.y}, ${mid} ${m.y}, ${cx} ${m.y}`,
+    mx: (n.x + m.x) / 2,
+    my: (n.y + m.y) / 2,
+  };
+}
 function taskMarkup(t, width, surface = 'main') {
   const b = bounds(t, Math.max(240, width), surface),
     lanes = [...new Set(t.events.map((e) => e.lane))].sort((a, b) => a - b),
@@ -342,13 +354,11 @@ function taskMarkup(t, width, surface = 'main') {
       n = nodes.get(a),
       m = nodes.get(c);
     if (!n || !m) continue;
-    const ax = n.x + 9,
-      cx = m.x - 9,
-      mid = (ax + cx) / 2,
-      path = `M ${ax} ${n.y} C ${mid} ${n.y}, ${mid} ${m.y}, ${cx} ${m.y}`,
-      mx = (n.x + m.x) / 2,
-      my = (n.y + m.y) / 2;
-    svg += `<path class="edge-hit" data-edge="${i}" data-task="${t.id}" d="${path}" fill="none" stroke="transparent" stroke-width="18" tabindex="0" role="button" aria-label="Edit connection direction"/><path class="edge" d="${path}" marker-${reverse ? 'start' : 'end'}="url(#arrow-${surface}-${t.id})" pointer-events="none"/><g class="between-add" data-between="${i}" data-task="${t.id}" tabindex="0" role="button" aria-label="Insert event between connected events"><circle class="hit" cx="${mx}" cy="${my}" r="17"/><circle class="add-ring" cx="${mx}" cy="${my}" r="9"/><text class="add-plus" x="${mx}" y="${my + 4}" text-anchor="middle">+</text></g>`;
+    const { path, mx, my } = edgeGeometry(n, m),
+      from = t.events.find((e) => e.id === a),
+      to = t.events.find((e) => e.id === c),
+      interval = Math.abs(day(visibleDate(to)) - day(visibleDate(from)));
+    svg += `<path class="edge-hit" data-edge="${i}" data-task="${t.id}" d="${path}" fill="none" stroke="transparent" stroke-width="18" tabindex="0" role="button" aria-label="${plural(interval, 'day')} between ${esc(from.description)} and ${esc(to.description)}. Edit connection direction"/><path class="edge" data-edge-line="${i}" d="${path}" marker-${reverse ? 'start' : 'end'}="url(#arrow-${surface}-${t.id})" pointer-events="none"/><g class="between-add" data-between="${i}" data-task="${t.id}" tabindex="0" role="button" aria-label="Insert event between connected events"><circle class="hit" cx="${mx}" cy="${my}" r="17"/><circle class="add-ring" cx="${mx}" cy="${my}" r="9"/><text class="add-plus" x="${mx}" y="${my + 4}" text-anchor="middle">+</text></g>`;
   }
   for (const e of t.events) {
     const n = nodes.get(e.id),
@@ -360,7 +370,7 @@ function taskMarkup(t, width, surface = 'main') {
   const canvas = t.events.length
     ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${canvasWidth}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
-  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit ${esc(t.name)} timeline">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
+  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit and align ${esc(t.name)} timeline" title="Fit and align points by date">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
 const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
   money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
@@ -436,6 +446,16 @@ function render() {
       .join('') +
     `<button class="workspace-tab add-tab" id="new-project-tab" aria-label="New project">＋</button>`;
   $('new-project-tab').onclick = () => openName('project');
+  const chosenProject = $('quick-task-project').value,
+    quickRoute = view === 'project' ? active : 'all';
+  $('quick-task-project').innerHTML = data.projects
+    .map((p) => `<option value="${p.id}">${esc(p.name)}</option>`)
+    .join('');
+  $('quick-task-project').value =
+    quickRoute === quickProjectRoute && data.projects.some((p) => p.id === chosenProject)
+      ? chosenProject
+      : active;
+  quickProjectRoute = quickRoute;
   const name = user ? user.user_metadata?.name || user.email : 'Your workspace';
   $('account-name').textContent = name;
   $('avatar').textContent = user ? initials(name) : 'PM';
@@ -491,7 +511,7 @@ function renderPortfolio() {
         p.tasks.map((t) => {
           const events = [...t.events].sort((a, b) => day(visibleDate(a)) - day(visibleDate(b))),
             shown = events.slice(0, 8);
-          return `<a class="all-task-card" href="#/project/${p.id}"><div class="all-task-head"><strong dir="auto">${esc(t.name)}</strong><span dir="auto">${esc(p.name)}</span></div><div class="all-task-track">${shown.length ? shown.map((e) => `<div class="all-task-point"><i class="${e.kind === 'fact' ? 'fact' : e.done ? 'done' : 'open'}"></i><span dir="auto">${esc(e.description)}</span><small>${shortDate(visibleDate(e))}</small></div>`).join('') : '<span class="muted">No activity yet</span>'}</div></a>`;
+          return `<a class="all-task-card" href="#/project/${p.id}"><div class="all-task-head"><strong dir="auto">${esc(t.name)}</strong><span dir="auto">${esc(p.name)}</span></div>${t.description ? `<p class="all-task-description" dir="auto">${esc(t.description)}</p>` : ''}<div class="all-task-track">${shown.length ? shown.map((e) => `<div class="all-task-point"><i class="${e.kind === 'fact' ? 'fact' : e.done ? 'done' : 'open'}"></i><span dir="auto">${esc(e.description)}</span><small>${shortDate(visibleDate(e))}</small></div>`).join('') : '<span class="muted">No activity yet</span>'}</div></a>`;
         }),
       )
       .join('') || '<p class="empty">No tasks yet. Create a project to get started.</p>';
@@ -573,7 +593,7 @@ function renderProject() {
     ? p.tasks
         .map(
           (t) =>
-            `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><span class="task-name" dir="auto">${esc(t.name)}</span><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
+            `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><div class="task-heading"><span class="task-name" dir="auto">${esc(t.name)}</span>${t.description ? `<span class="task-description" dir="auto">${esc(t.description)}</span>` : ''}</div><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="button small" data-edit-task="${t.id}">Edit task</button><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
         )
         .join('')
     : '<div class="empty-task">No tasks yet. Add a task to start its timeline.</div>';
@@ -808,9 +828,11 @@ function openEditor(
   const r = anchor?.getBoundingClientRect(),
     w = Math.min(420, innerWidth - 24),
     h = $('editor').offsetHeight;
-  const left = r ? Math.min(innerWidth - w - 12, Math.max(12, r.left - 70)) : (innerWidth - w) / 2,
+  const left = r
+      ? Math.max(12, Math.min(innerWidth - w - 12, r.left - 70))
+      : Math.max(12, (innerWidth - w) / 2),
     top = r
-      ? Math.min(innerHeight - h - 12, Math.max(12, r.bottom + 10))
+      ? Math.max(12, Math.min(innerHeight - h - 12, r.bottom + 10))
       : Math.max(12, (innerHeight - h) / 2);
   $('editor').style.left = left + 'px';
   $('editor').style.top = top + 'px';
@@ -841,6 +863,8 @@ function closeEditor() {
   if ($('editor').hidden) return;
   $('editor').hidden = true;
   $('editor-backdrop').hidden = true;
+  movingEditor = null;
+  $('editor').classList.remove('moving');
   editing = null;
   creating = null;
   lastFocus?.focus();
@@ -919,6 +943,48 @@ $('event-form').onsubmit = (ev) => {
 };
 $('close-editor').onclick = closeEditor;
 $('editor-backdrop').onclick = closeEditor;
+let movingEditor = null;
+$('editor')
+  .querySelector('.popup-heading')
+  .addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || $('editor').hidden) return;
+    e.preventDefault();
+    movingEditor = {
+      x: e.clientX,
+      y: e.clientY,
+      left: $('editor').offsetLeft,
+      top: $('editor').offsetTop,
+      capture: e.currentTarget,
+      pointerId: e.pointerId,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    $('editor').classList.add('moving');
+  });
+window.addEventListener('pointermove', (e) => {
+  if (!movingEditor) return;
+  $('editor').style.left =
+    Math.max(
+      8,
+      Math.min(
+        innerWidth - $('editor').offsetWidth - 8,
+        movingEditor.left + e.clientX - movingEditor.x,
+      ),
+    ) + 'px';
+  $('editor').style.top =
+    Math.max(
+      8,
+      Math.min(
+        innerHeight - $('editor').offsetHeight - 8,
+        movingEditor.top + e.clientY - movingEditor.y,
+      ),
+    ) + 'px';
+});
+window.addEventListener('pointerup', () => {
+  if (movingEditor?.capture.hasPointerCapture(movingEditor.pointerId))
+    movingEditor.capture.releasePointerCapture(movingEditor.pointerId);
+  movingEditor = null;
+  $('editor').classList.remove('moving');
+});
 $('delete-event').onclick = () => $('delete-dialog').showModal();
 $('cancel-delete').onclick = () => $('delete-dialog').close();
 $('confirm-delete').onclick = () => {
@@ -930,17 +996,24 @@ $('confirm-delete').onclick = () => {
   closeEditor();
   toast('Event deleted');
 };
-function openName(mode) {
+function openName(mode, tid = null) {
   nameMode = mode;
-  $('name-title').textContent = mode === 'project' ? 'New project' : 'New task';
-  $('description-field').hidden = mode !== 'project';
-  $('name-input').value = '';
-  $('name-description').value = '';
+  editingTaskId = tid;
+  $('name-title').textContent = mode === 'project' ? 'New project' : 'Edit task';
+  $('name-submit').textContent = mode === 'project' ? 'Create project' : 'Save task';
+  $('description-field').hidden = false;
+  const t = tid ? taskBy(tid) : null;
+  $('name-input').value = t?.name || '';
+  $('name-description').value = t?.description || '';
   $('name-dialog').showModal();
   $('name-input').focus();
 }
 $('new-project').onclick = () => openName('project');
-$('add-task').onclick = () => openName('task');
+$('add-task').onclick = () => {
+  $('quick-task-project').value = active;
+  $('quick-task-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  $('quick-task-name').focus({ preventScroll: true });
+};
 $('close-name').onclick = () => $('name-dialog').close();
 $('name-form').onsubmit = (e) => {
   e.preventDefault();
@@ -951,12 +1024,36 @@ $('name-form').onsubmit = (e) => {
       const p = { id: uid(), name, description: $('name-description').value.trim(), tasks: [] };
       data.projects.push(p);
       active = p.id;
-    } else project().tasks.push({ id: uid(), name, events: [], edges: [] });
+    } else {
+      const t = taskBy(editingTaskId);
+      t.name = name;
+      t.description = $('name-description').value.trim();
+    }
   });
   $('name-dialog').close();
   if (nameMode === 'project') location.hash = '#/project/' + active;
 };
 $('new-project-main').onclick = () => openName('project');
+$('quick-task-form').onsubmit = (e) => {
+  e.preventDefault();
+  const name = $('quick-task-name').value.trim(),
+    projectId = $('quick-task-project').value;
+  if (!name || !data.projects.some((p) => p.id === projectId)) return;
+  const created = commit(() => {
+    data.projects
+      .find((p) => p.id === projectId)
+      .tasks.unshift({
+        id: uid(),
+        name,
+        events: [],
+        edges: [],
+      });
+  });
+  if (!created) return;
+  $('quick-task-name').value = '';
+  if (view !== 'project' || active !== projectId) location.hash = '#/project/' + projectId;
+  else scrollTo({ top: 0, behavior: 'smooth' });
+};
 let keepSiteState = false;
 window.addEventListener('hashchange', () => {
   if (focusedTask) closeTask();
@@ -996,10 +1093,12 @@ function openConnection(tid, index) {
 }
 function handleClick(e) {
   const target = e.target.closest(
-    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task]',
+    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task],[data-edit-task]',
   );
   if (!target || drag) return;
-  if (target.dataset.moveTask) moveTask(target.dataset.moveTask, Number(target.dataset.direction));
+  if (target.dataset.editTask) openName('edit-task', target.dataset.editTask);
+  else if (target.dataset.moveTask)
+    moveTask(target.dataset.moveTask, Number(target.dataset.direction));
   else if (target.dataset.tidy)
     commit(() => {
       for (const event of taskBy(target.dataset.tidy).events) delete event.layout;
@@ -1014,7 +1113,11 @@ function handleClick(e) {
     target.dataset.surface === 'modal' ? renderTaskDialog() : render();
   } else if (target.dataset.fit) {
     viewZoom[target.dataset.surface + ':' + target.dataset.fit] = 1;
-    target.dataset.surface === 'modal' ? renderTaskDialog() : render();
+    if (taskBy(target.dataset.fit).events.some((e) => e.layout))
+      commit(() => {
+        for (const event of taskBy(target.dataset.fit).events) delete event.layout;
+      });
+    else target.dataset.surface === 'modal' ? renderTaskDialog() : render();
   } else if (target.dataset.expand) openTask(target.dataset.expand);
   else if (target.dataset.between !== undefined)
     insert(target.dataset.task, +target.dataset.between, target);
@@ -1023,36 +1126,68 @@ function handleClick(e) {
   else if (target.dataset.event)
     openEditor(target.dataset.task, target.dataset.event, null, false, target);
 }
-function moveTask(id, step, toId = null) {
+function moveTask(id, step, toId = null, after = false) {
   const tasks = project().tasks,
     from = tasks.findIndex((t) => t.id === id),
-    to = toId ? tasks.findIndex((t) => t.id === toId) : from + step;
+    target = toId ? tasks.findIndex((t) => t.id === toId) : -1,
+    beforeRemoval = toId ? target + (after ? 1 : 0) : from + step,
+    to = toId && from < beforeRemoval ? beforeRemoval - 1 : beforeRemoval;
   if (from < 0 || to < 0 || to >= tasks.length || from === to) return;
   commit(() => {
     tasks.splice(to, 0, tasks.splice(from, 1)[0]);
   });
 }
-let draggedTask = null;
+let draggedTask = null,
+  dropTarget = null,
+  dropPlaceholder = null,
+  dragSource = null;
+function clearTaskDrag() {
+  dropPlaceholder?.remove();
+  dragSource?.classList.remove('drag-source');
+  draggedTask = dropTarget = dropPlaceholder = dragSource = null;
+}
 $('timeline-content').addEventListener('dragstart', (e) => {
   const handle = e.target.closest('[data-drag-task]');
   if (!handle) return;
   draggedTask = handle.dataset.dragTask;
+  dragSource = handle.closest('[data-task-row]');
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', draggedTask);
+  e.dataTransfer.setDragImage(dragSource.querySelector('.task-label'), 28, 20);
+  requestAnimationFrame(() => dragSource?.classList.add('drag-source'));
 });
 $('timeline-content').addEventListener('dragover', (e) => {
-  if (!draggedTask || !e.target.closest('[data-task-row]')) return;
+  if (!draggedTask) return;
+  const row = e.target.closest('[data-task-row]');
+  if (!row && !e.target.closest('.task-drop-placeholder')) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
+  if (!row) return;
+  if (row.dataset.taskRow === draggedTask) {
+    dropPlaceholder?.remove();
+    dropTarget = null;
+    return;
+  }
+  const head = row.querySelector('.task-label').getBoundingClientRect(),
+    after = e.clientY > head.top + head.height / 2;
+  if (dropTarget?.id === row.dataset.taskRow && dropTarget.after === after) return;
+  dropPlaceholder ||= document.createElement('div');
+  dropPlaceholder.className = 'task-drop-placeholder';
+  dropPlaceholder.textContent = 'Place task here';
+  row.parentNode.insertBefore(dropPlaceholder, after ? row.nextSibling : row);
+  dropTarget = { id: row.dataset.taskRow, after };
+  if (e.clientY < 80) window.scrollBy(0, -12);
+  else if (e.clientY > innerHeight - 80) window.scrollBy(0, 12);
 });
 $('timeline-content').addEventListener('drop', (e) => {
-  const row = e.target.closest('[data-task-row]');
-  if (!draggedTask || !row) return;
+  if (!draggedTask || !dropTarget) return;
   e.preventDefault();
-  moveTask(draggedTask, 0, row.dataset.taskRow);
-  draggedTask = null;
+  const { id, after } = dropTarget,
+    source = draggedTask;
+  clearTaskDrag();
+  moveTask(source, 0, id, after);
 });
-$('timeline-content').addEventListener('dragend', () => (draggedTask = null));
+$('timeline-content').addEventListener('dragend', clearTaskDrag);
 for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   container.addEventListener(
     'click',
@@ -1081,15 +1216,21 @@ for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   container.addEventListener('pointerover', showHover);
   container.addEventListener('focusin', showHover);
   container.addEventListener('pointerout', (e) => {
-    if (!e.relatedTarget?.closest?.('[data-event]')) hideHover();
+    if (!e.relatedTarget?.closest?.('[data-event],[data-edge]')) hideHover();
   });
   container.addEventListener('focusout', hideHover);
   container.addEventListener('pointerdown', beginDrag);
 }
 $('fit').onclick = () => {
   viewZoom = {};
-  render();
-  if (focusedTask) renderTaskDialog();
+  if (project().tasks.some((t) => t.events.some((e) => e.layout)))
+    commit(() => {
+      for (const task of project().tasks) for (const event of task.events) delete event.layout;
+    });
+  else {
+    render();
+    if (focusedTask) renderTaskDialog();
+  }
 };
 $('pan').onclick = () => {
   panning = !panning;
@@ -1115,13 +1256,26 @@ $('reverse-connection').onclick = () => {
 };
 function showHover(e) {
   if (drag || !$('editor').hidden) return;
-  const node = e.target.closest('[data-event]');
-  if (!node) return;
-  const t = taskBy(node.dataset.task),
-    ev = t.events.find((x) => x.id === node.dataset.event),
-    r = node.getBoundingClientRect();
-  $('hover-preview').innerHTML =
-    `<strong dir="auto">${esc(ev.description)}</strong><span><bdi>${esc(t.name)}</bdi> · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Due <b>${dateLabel(ev.scheduled)}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original due <b>${dateLabel(ev.planned)}</b></div>`}`;
+  const node = e.target.closest('[data-event]'),
+    edge = e.target.closest('[data-edge]');
+  if (!node && !edge) return;
+  const r = (node || edge).getBoundingClientRect();
+  if (node) {
+    const t = taskBy(node.dataset.task),
+      ev = t.events.find((x) => x.id === node.dataset.event);
+    $('hover-preview').innerHTML =
+      `<strong dir="auto">${esc(ev.description)}</strong><span><bdi>${esc(t.name)}</bdi> · ${ev.kind === 'fact' ? 'Recorded event' : ev.done ? 'Completed action' : 'Action needed'}</span>${ev.kind === 'fact' ? `<div>Occurred <b>${dateLabel(ev.occurred)}</b></div>` : `<div>Triggered <b>${dateLabel(ev.triggered)}</b></div><div>Due <b>${dateLabel(ev.scheduled)}</b></div><div>Actual <b>${dateLabel(ev.actual)}</b></div><div>Original due <b>${dateLabel(ev.planned)}</b></div>`}`;
+  } else {
+    const t = taskBy(edge.dataset.task),
+      [a, b] = t.edges[Number(edge.dataset.edge)],
+      from = t.events.find((x) => x.id === a),
+      to = t.events.find((x) => x.id === b),
+      days = Math.abs(day(visibleDate(to)) - day(visibleDate(from))),
+      complete = (from.kind === 'fact' || from.done) && (to.kind === 'fact' || to.done),
+      adjusted = !!(from.layout || to.layout);
+    $('hover-preview').innerHTML =
+      `<strong>${days ? plural(days, 'day') : 'Same day'}</strong><span>${complete ? 'Time between activities' : 'Scheduled interval'}</span><div><bdi dir="auto">${esc(from.description)}</bdi><b>${dateLabel(visibleDate(from))}</b></div><div><bdi dir="auto">${esc(to.description)}</bdi><b>${dateLabel(visibleDate(to))}</b></div>${adjusted ? '<small>Visual spacing adjusted · dates unchanged</small>' : ''}`;
+  }
   $('hover-preview').hidden = false;
   const w = $('hover-preview').offsetWidth,
     h = $('hover-preview').offsetHeight;
@@ -1161,6 +1315,9 @@ function beginDrag(e) {
     };
   } else if (node && !panning) {
     e.preventDefault();
+    const svg = node.closest('svg'),
+      ev = taskBy(node.dataset.task).events.find((x) => x.id === node.dataset.event);
+    node.classList.add('dragging');
     drag = {
       kind: 'arrange',
       tid: node.dataset.task,
@@ -1169,7 +1326,14 @@ function beginDrag(e) {
       startY: e.clientY,
       moved: false,
       node,
-      surface: node.closest('svg').dataset.surface,
+      port: svg.querySelector(`[data-port="${node.dataset.event}"]`),
+      svg,
+      baseWidth: Number(svg.getAttribute('width')),
+      baseHeight: Number(svg.getAttribute('height')),
+      offset: ev.layout || { dx: 0, dy: 0 },
+      deltaX: 0,
+      deltaY: 0,
+      surface: svg.dataset.surface,
     };
   } else if (panning && !e.target.closest('button')) {
     drag = {
@@ -1184,6 +1348,43 @@ function beginDrag(e) {
     };
     e.preventDefault();
   }
+  if (drag) {
+    drag.pointerId = e.pointerId;
+    drag.capture = scroll;
+    scroll.setPointerCapture(e.pointerId);
+  }
+}
+function previewPointMove(d, rawX, rawY, clientX, clientY) {
+  const t = taskBy(d.tid),
+    g = geometry.get(d.surface + ':' + d.tid),
+    base = g.nodes.get(d.eid),
+    dx = Math.max(78 - base.x, -5000 - d.offset.dx, Math.min(5000 - d.offset.dx, rawX)),
+    dy = Math.max(8 - base.labelY, -5000 - d.offset.dy, Math.min(5000 - d.offset.dy, rawY)),
+    moved = { x: base.x + dx, y: base.y + dy };
+  d.deltaX = dx;
+  d.deltaY = dy;
+  d.node.setAttribute('transform', `translate(${dx},${dy})`);
+  d.port?.setAttribute('transform', `translate(${dx},${dy})`);
+  for (let i = 0; i < t.edges.length; i++) {
+    const [a, b] = t.edges[i];
+    if (a !== d.eid && b !== d.eid) continue;
+    const before = edgeGeometry(g.nodes.get(a), g.nodes.get(b)),
+      next = edgeGeometry(
+        a === d.eid ? moved : g.nodes.get(a),
+        b === d.eid ? moved : g.nodes.get(b),
+      );
+    d.svg.querySelector(`[data-edge="${i}"]`)?.setAttribute('d', next.path);
+    d.svg.querySelector(`[data-edge-line="${i}"]`)?.setAttribute('d', next.path);
+    const between = d.svg.querySelector(`[data-between="${i}"]`);
+    between?.setAttribute('transform', `translate(${next.mx - before.mx},${next.my - before.my})`);
+  }
+  d.svg.setAttribute('width', Math.max(d.baseWidth, moved.x + 90));
+  d.svg.setAttribute('height', Math.max(d.baseHeight, moved.y + 52));
+  $('drag-cue').hidden = false;
+  $('drag-cue').textContent = 'Visual layout only · dates unchanged';
+  $('drag-cue').style.left =
+    Math.min(innerWidth - $('drag-cue').offsetWidth - 12, clientX + 16) + 'px';
+  $('drag-cue').style.top = Math.min(innerHeight - 38, clientY + 16) + 'px';
 }
 window.addEventListener('pointermove', (e) => {
   if (!drag) return;
@@ -1212,13 +1413,15 @@ window.addEventListener('pointermove', (e) => {
     )
       target.querySelector('.event-circle').classList.add('merge-target');
   }
-  if (drag.kind === 'arrange' && drag.moved)
-    drag.node.setAttribute('transform', `translate(${dx},${dy})`);
+  if (drag.kind === 'arrange' && drag.moved) previewPointMove(drag, dx, dy, e.clientX, e.clientY);
 });
 window.addEventListener('pointerup', (e) => {
   if (!drag) return;
   const d = drag;
   drag = null;
+  if (d.capture?.hasPointerCapture(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
+  $('drag-cue').hidden = true;
+  d.node?.classList.remove('dragging');
   document.querySelectorAll('.merge-target').forEach((n) => n.classList.remove('merge-target'));
   if (d.kind === 'connect') {
     d.path.remove();
@@ -1244,23 +1447,10 @@ window.addEventListener('pointerup', (e) => {
       openEditor(d.tid, null, d.from, branch, d.port, date);
     }
   } else if (d.kind === 'arrange' && d.moved) {
-    const t = taskBy(d.tid),
-      ev = t.events.find((e) => e.id === d.eid),
-      g = geometry.get(d.surface + ':' + d.tid),
-      n = g.nodes.get(d.eid),
-      offset = ev.layout || { dx: 0, dy: 0 };
     commit(() => {
       taskBy(d.tid).events.find((x) => x.id === d.eid).layout = {
-        dx: Math.round(
-          Math.max(-5000, 78 - n.x + offset.dx, Math.min(5000, offset.dx + e.clientX - d.startX)),
-        ),
-        dy: Math.round(
-          Math.max(
-            -5000,
-            8 - n.labelY + offset.dy,
-            Math.min(5000, offset.dy + e.clientY - d.startY),
-          ),
-        ),
+        dx: Math.round(d.offset.dx + d.deltaX),
+        dy: Math.round(d.offset.dy + d.deltaY),
       };
     });
   } else if (d.kind === 'arrange') {
@@ -1269,6 +1459,18 @@ window.addEventListener('pointerup', (e) => {
   // Ignore the click the browser fires right after this pointerup. A time window, rather than a
   // one-off listener, cannot swallow a later click when the pointer was released elsewhere.
   if (d.moved || d.kind === 'arrange') suppressClickUntil = performance.now() + 400;
+});
+window.addEventListener('pointercancel', () => {
+  if (movingEditor) {
+    movingEditor = null;
+    $('editor').classList.remove('moving');
+  }
+  if (!drag) return;
+  drag.path?.remove();
+  drag = null;
+  $('drag-cue').hidden = true;
+  render();
+  if (focusedTask) renderTaskDialog();
 });
 function showCalendar() {
   const date = $('calendar-date').value,

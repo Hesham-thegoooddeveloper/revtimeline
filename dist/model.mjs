@@ -81,7 +81,12 @@ export function checkData(data) {
     projects.add(p.id);
     const tasks = new Set();
     for (const t of p.tasks) {
-      if (!validId(t?.id) || tasks.has(t.id) || typeof t.name !== 'string')
+      if (
+        !validId(t?.id) ||
+        tasks.has(t.id) ||
+        typeof t.name !== 'string' ||
+        (t.description !== undefined && typeof t.description !== 'string')
+      )
         return `Project “${p.name}” has a task with a missing or invalid name or ID.`;
       tasks.add(t.id);
       const events = new Set();
