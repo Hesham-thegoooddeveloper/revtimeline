@@ -1,6 +1,12 @@
 # Change log
 
-## Prepared startup recovery — 10 October 2026
+## Prepared same-day and dense timeline layout — 10 October 2026
+
+- Allow connected activities on the same calendar day and insert another between same-day steps.
+- Stack same-day points and labels vertically in connection order, with readable routing for their lines.
+- Limit automatic horizontal density to about five date columns per task viewport; long histories scroll. Tidy and Fit reset visual offsets without changing dates.
+
+## Startup recovery — 10 October 2026
 
 - Version the JavaScript and CSS links in the published HTML to avoid mixing release assets after a GitHub Pages deployment.
 - Show a cache-busting refresh button when startup throws or takes too long, instead of leaving the loading screen indefinitely.

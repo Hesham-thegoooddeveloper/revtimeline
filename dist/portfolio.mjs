@@ -1,4 +1,4 @@
-import { day } from './model.mjs';
+import { day } from './model.mjs?v=2026-10-10-sameday-layout';
 
 // Summaries for the portfolio and project screens. `today` is a YYYY-MM-DD string.
 export function openActions(project) {

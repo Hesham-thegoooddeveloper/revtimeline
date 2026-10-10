@@ -24,9 +24,11 @@ The app opens on All tasks across projects, with a right information panel showi
 
 The visual design is Drawing office by day and Night shift by night (approved 3 October 2026). Auto follows the device's light or dark setting. The interface is in English; text the user types in Arabic displays right to left. Amounts use Latin currency codes such as "SAR" and Western digits, and dates use the Gregorian calendar.
 
-Each task starts at its own first event and opens fitted to its full history. A shared date ruler is not the default. Task zoom controls are local to each task. Mutations, undo and redo return the views to fit. A larger task workspace opens as a dialog and remains editable.
+Each task starts at its own first event with readable date spacing; longer histories scroll horizontally. A shared date ruler is not the default. Task zoom controls are local to each task. Mutations, undo and redo return the views to the normal readable density. A larger task workspace opens as a dialog and remains editable.
 
 The workspace has an All tasks tab followed by one tab per project. Tasks within a project can be reordered. Activity points can be moved horizontally and vertically for presentation without changing their dates or connections; Tidy layout removes a task's manual offsets. The Hand tool pans horizontally within a task and vertically through the project page.
+
+Activities on the same path may share a calendar day. Automatic layout stacks them vertically in connection order, with a newly connected same-day activity below its predecessor. At normal zoom, Tidy layout and Fit leave readable space between distinct dates and show at most about five date columns in a task viewport; longer histories scroll horizontally. Zoom controls let the user change that density without changing dates. A visual drag remains manual until Tidy or Fit resets its offset.
 
 The new task field appears before the tab bar. A Find field filters tasks in the current tab by project, task and activity text, and reveals matching activities on project timelines. The field clears when changing tabs. Export Excel downloads the full current tab, independent of the Find filter: all projects from All tasks, or only the active project from a project tab. The workbook includes project details, tasks, activities, payment terms and connections with numeric amounts and dates.
 

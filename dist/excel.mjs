@@ -1,4 +1,4 @@
-import { projectTotals, visibleDate } from './model.mjs';
+import { projectTotals, visibleDate } from './model.mjs?v=2026-10-10-sameday-layout';
 
 const encoder = new TextEncoder();
 const xml = (value) =>
