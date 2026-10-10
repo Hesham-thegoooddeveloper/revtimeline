@@ -1,5 +1,22 @@
 # Change log
 
+## Prepared reliability fixes — 10 October 2026
+
+These changes are on a review branch and have not been published.
+
+- Reject imported or locally saved workspaces with invalid calendar dates before a timeline can render them.
+- Restore unresolved account conflicts after a reload, use the latest server version when saving the chosen local copy, and keep a recoverable local copy until the conflict is resolved.
+- Sign out only the current device and report sign-out failures instead of showing a signed-out screen after an error.
+
+## Task workspace redesign — 10 October 2026
+
+Prepared after the owner approved the tabbed preview.
+
+- Show All tasks first, then one tab per project. The All tasks view includes a compact timeline for every task and the existing portfolio summary.
+- Reorder project tasks with a drag handle or up and down buttons.
+- Drag activity points in both directions without changing their dates. Positions are saved with the workspace, and each task has a Tidy layout button to restore automatic placement.
+- Let the Hand tool move through a long project vertically, while retaining horizontal panning inside each task.
+
 ## Accounts and syncing — 3 October 2026
 
 Authorized by the owner. Not yet published.

@@ -458,6 +458,128 @@ a {
   min-width: 0;
   padding: 26px 32px 44px;
 }
+.workspace-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 24px;
+  max-width: 1480px;
+  scrollbar-width: thin;
+}
+.workspace-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+.workspace-tab:hover {
+  color: var(--ink);
+}
+.workspace-tab[aria-current='page'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.workspace-tab span {
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+.add-tab {
+  font-size: 20px;
+}
+.rail-group,
+.project-nav {
+  display: none;
+}
+.all-tasks {
+  display: grid;
+  gap: 10px;
+}
+.all-task-card {
+  display: block;
+  padding: 16px 18px;
+  border: 1px solid var(--rule);
+  background: var(--raise);
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+.all-task-card:hover {
+  border-color: var(--accent);
+}
+.all-task-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.all-task-head strong {
+  font-size: 15px;
+}
+.all-task-head > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.all-task-track {
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+  padding-top: 18px;
+}
+.all-task-point {
+  position: relative;
+  display: grid;
+  flex: 1 0 116px;
+  max-width: 190px;
+  gap: 3px;
+  padding: 18px 12px 4px 0;
+  font-size: 11px;
+}
+.all-task-point::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 5px;
+  right: 0;
+  border-top: 1px solid var(--rule);
+}
+.all-task-point i {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--fact);
+  border: 2px solid var(--raise);
+}
+.all-task-point i.open {
+  background: var(--raise);
+  border-color: var(--accent);
+}
+.all-task-point i.done {
+  background: var(--accent);
+}
+.all-task-point span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.all-task-point small {
+  color: var(--muted);
+  font: 10px var(--mono);
+}
 .view {
   display: grid;
   gap: 20px;
@@ -869,9 +991,29 @@ a.prow:hover {
 }
 .task-label {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
   padding: 12px 18px 0;
+}
+.task-handle {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: grab;
+  font-size: 19px;
+  padding: 0 4px;
+}
+.task-handle:active {
+  cursor: grabbing;
+}
+.task-order {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 3px;
+}
+.task-order .icon-button {
+  width: 27px;
+  height: 27px;
 }
 .task-name {
   font-size: 14px;
@@ -886,13 +1028,15 @@ a.prow:hover {
 }
 .task-scroll {
   overflow: auto;
-  max-height: 75vh;
   padding-inline: 18px;
   scrollbar-width: thin;
   scrollbar-color: var(--rule) transparent;
 }
 .task-scroll.panning {
   cursor: grab;
+}
+.task-scroll.panning .task-canvas {
+  touch-action: none;
 }
 .task-bottom {
   display: flex;
@@ -944,7 +1088,8 @@ a.prow:hover {
   font-family: var(--body);
 }
 .task-canvas .node {
-  cursor: pointer;
+  cursor: move;
+  touch-action: none;
 }
 .task-canvas .port {
   cursor: crosshair;

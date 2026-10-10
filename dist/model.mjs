@@ -12,6 +12,11 @@ export const SCHEMA_VERSION = 1;
 const list = (v) => (Array.isArray(v) ? v : []);
 // IDs are written into HTML attributes, so only allow characters that need no escaping.
 const validId = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(v);
+const validDate = (v) =>
+  typeof v === 'string' &&
+  /^\d{4}-\d{2}-\d{2}$/.test(v) &&
+  Number.isFinite(day(v)) &&
+  iso(day(v)) === v;
 const label = (e) => {
   const d = String(e.description ?? '').trim() || 'Untitled event';
   return `“${d.length > 40 ? d.slice(0, 39) + '…' : d}”`;
@@ -87,9 +92,20 @@ export function checkData(data) {
           typeof e.description !== 'string' ||
           !['fact', 'action'].includes(e.kind) ||
           !Number.isInteger(e.lane) ||
-          e.lane < 0
+          e.lane < 0 ||
+          (e.layout !== undefined &&
+            (!e.layout ||
+              !Number.isFinite(e.layout.dx) ||
+              !Number.isFinite(e.layout.dy) ||
+              Math.abs(e.layout.dx) > 5000 ||
+              Math.abs(e.layout.dy) > 5000)) ||
+          !validDate(visibleDate(e)) ||
+          (e.kind === 'action' && (!validDate(e.triggered) || !validDate(e.scheduled))) ||
+          ['occurred', 'triggered', 'planned', 'scheduled', 'actual'].some(
+            (field) => e[field] != null && !validDate(e[field]),
+          )
         )
-          return `Task “${t.name}” has an event with missing or invalid details.`;
+          return `Task “${t.name}” has an event with missing or invalid details or dates.`;
         events.add(e.id);
       }
       for (const edge of t.edges)

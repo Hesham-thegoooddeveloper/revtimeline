@@ -222,6 +222,17 @@ test('saved and imported data must have a valid structure and safe IDs', () => {
   const badDetails = migrate(structuredClone(sample));
   badDetails.projects[0].details.value = '250000';
   assert.match(checkData(badDetails), /invalid project details/);
+  const badOccurrence = migrate(structuredClone(sample));
+  badOccurrence.projects[0].tasks[0].events[0].occurred = '2026-02-30';
+  assert.match(checkData(badOccurrence), /invalid details or dates/);
+  const badTrigger = migrate(structuredClone(sample));
+  badTrigger.projects[0].tasks[0].events[6].triggered = 'not-a-date';
+  assert.match(checkData(badTrigger), /invalid details or dates/);
+  const positioned = migrate(structuredClone(sample));
+  positioned.projects[0].tasks[0].events[0].layout = { dx: 120, dy: 64 };
+  assert.equal(checkData(positioned), null);
+  positioned.projects[0].tasks[0].events[0].layout.dx = Infinity;
+  assert.match(checkData(positioned), /invalid details or dates/);
   assert.match(checkData({ schemaVersion: SCHEMA_VERSION + 1, projects: [{}] }), /newer version/);
 });
 test('projects without commercial details remain valid', () => {
