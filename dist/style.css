@@ -1287,14 +1287,19 @@ a.prow:hover {
 .task-canvas.compact .stem,
 .task-canvas.compact .event-date,
 .task-canvas.compact .port,
+.task-canvas.compact .before-port,
 .task-canvas.compact .between-add {
   display: none;
 }
 .task-canvas.compact .event-circle {
   stroke-width: 3;
 }
-.task-canvas .port {
+.task-canvas .port,
+.task-canvas .before-port {
   cursor: crosshair;
+}
+.task-canvas .before-port {
+  cursor: pointer;
 }
 .task-canvas .edge-hit,
 .task-canvas .between-add {
@@ -1320,7 +1325,9 @@ a.prow:hover {
   font-size: 13px;
 }
 .task-canvas .between-add:hover .add-ring,
-.task-canvas .port:hover .add-ring {
+.task-canvas .port:hover .add-ring,
+.task-canvas .before-port:hover .add-ring,
+.task-canvas .before-port:focus-visible .add-ring {
   stroke: var(--ink);
 }
 .task-canvas .label-box.fact {
@@ -1692,6 +1699,151 @@ input[readonly] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
+}
+.date-control {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--raise);
+}
+.date-control:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.date-control input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 500 13px/1.4 var(--mono);
+  letter-spacing: 0.01em;
+}
+.date-control input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.date-open {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.date-open:hover,
+.date-open:focus-visible {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--focus) 12%, var(--raise));
+}
+.date-open svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.date-picker-panel {
+  position: fixed;
+  z-index: 1000;
+  width: 304px;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--raise);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.date-picker-head,
+.date-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.date-picker-head {
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.date-picker-head strong {
+  flex: 1;
+  text-align: center;
+  font: 650 15px/1.3 var(--display);
+}
+.date-picker-nav,
+.date-picker-footer button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--focus);
+  cursor: pointer;
+}
+.date-picker-nav {
+  width: 34px;
+  height: 34px;
+  font-size: 25px;
+  line-height: 1;
+}
+.date-picker-nav:hover,
+.date-picker-footer button:hover {
+  background: var(--surface);
+}
+.date-picker-weekdays,
+.date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+}
+.date-picker-weekdays {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.date-picker-day {
+  width: 35px;
+  height: 35px;
+  margin: 1px auto;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: 500 12px/1 var(--mono);
+}
+.date-picker-day.outside {
+  color: var(--muted);
+  opacity: 0.6;
+}
+.date-picker-day.today {
+  border-color: var(--focus);
+}
+.date-picker-day[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+.date-picker-day:hover,
+.date-picker-day:focus-visible {
+  border-color: var(--focus);
+  outline: none;
+}
+.date-picker-footer {
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 9px;
+  border-top: 1px solid var(--rule-soft);
+}
+.date-picker-footer button {
+  padding: 6px 10px;
+  font-size: 12px;
 }
 .popup-meta {
   font-size: 12px;
