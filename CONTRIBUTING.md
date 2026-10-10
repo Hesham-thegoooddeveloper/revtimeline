@@ -2,7 +2,7 @@
 
 ## Current hold
 
-Do not implement the changes in `docs/backlog.md` until the owner authorizes them. Repository preparation and documentation work are allowed. The owner authorized the first part of the project overview and the data-safety work on 3 October 2026; those changes are in the repository, but the live website remains at iteration 02 until it is republished.
+Do not implement the remaining changes in `docs/backlog.md` until the owner authorizes them. Repository preparation and documentation work are allowed. The first part of the project overview, data-safety work, accounts and legal pages are on the published `main` branch. New changes remain unpublished until they are merged and the Pages workflow succeeds.
 
 ## Change workflow
 

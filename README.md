@@ -2,12 +2,12 @@
 
 RevTimeline (formerly TrackFlow) is a project-history application. Every revision, every approval, in order. Each project contains continuous tasks, and each task records what happened through a horizontal timeline with parallel branches and merges.
 
-**Current stage:** interactive prototype, iteration 02 plus the first part of the commercial project overview and data-safety work (see the [change log](CHANGELOG.md)). These changes are in this repository but have not been published to the live Site yet. The remaining project-information fields and the latest interaction changes are approved for later implementation.
+**Current stage:** interactive prototype, iteration 02 plus the first part of the commercial project overview, accounts and data-safety work (see the [change log](CHANGELOG.md)). GitHub Pages published the current `main` branch on 4 October 2026. The remaining project-information fields are planned for later implementation.
 
 ## Working prototype
 
 - Sign in with an email account (Google and LinkedIn once enabled) to keep the same projects on every device, or try it without an account in one browser. Accounts use Supabase; see supabase/schema.sql.
-- Start on a portfolio of all projects: status, next action, history, value excluding VAT, and actions due in the next 7 days.
+- Start on an All tasks tab with tasks across projects, followed by a tab for each project. The portfolio summary below shows status, next action, history, value excluding VAT, and actions due in the next 7 days.
 - Work in a project workspace with a commercial title block, full-width task timelines, next actions and payment terms.
 - Switch between day and night modes, or follow the device setting.
 - Type in Arabic anywhere: names, descriptions and events display right to left. The interface itself is in English.
@@ -17,16 +17,18 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 - Keep a safety copy of saved data that cannot be read, instead of overwriting it.
 - Keep several open tabs in sync with each other.
 - View each task from its own start, automatically fitted to its available width.
+- Reorder tasks within a project by dragging their handles or using the up and down buttons.
+- Drag activity points freely on a task timeline without changing their dates; use Tidy layout to reset that task's points to their date-based positions.
 - Inspect full event details on hover and edit through a popup.
 - Insert an event between connected events, create branches and merge paths.
 - Track occurrence dates for recorded events and trigger, due and completion dates for actions.
 - Preserve original due dates while shifting upcoming actions when dates change.
 - Reject invalid chronology and same-path same-date overlaps without changing saved records.
-- Zoom, fit, pan and open a task in a larger window.
+- Zoom, fit, pan horizontally within a task and vertically through a project, or open a task in a larger window.
 - Undo and redo application changes within the current session.
 - View recorded events and active actions through an optional daily calendar.
 
-The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving. There is no build step or backend. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License, so the app makes no third-party requests. Sample data is fictitious. Clearing browser storage removes local records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
+The app uses HTML, CSS and JavaScript modules, with SVG timelines and browser-local saving for guests or Supabase sync for signed-in accounts. There is no build step. Fonts (Archivo, IBM Plex Sans, IBM Plex Sans Arabic and IBM Plex Mono) are bundled in `dist/fonts` under the SIL Open Font License. Sample data is fictitious. Clearing browser storage removes guest records, so export a backup regularly; the prototype is not yet a dependable archive for important project information. Tasks cannot yet be renamed, and projects and tasks cannot yet be deleted.
 
 ## Run locally
 

@@ -20,11 +20,13 @@ Connections cannot form loops. Reversing a displayed arrow changes relationship 
 
 ## Current experience
 
-The app opens on a portfolio of all projects. A project's status is derived from its actions: overdue when any open action is past its due date, on track when actions are open and none is overdue, and "no open actions" otherwise. "Due in the next 7 days" includes overdue actions. Contract value is summed per currency from each project's value excluding VAT.
+The app opens on All tasks across projects, with the portfolio summary below. A project's status is derived from its actions: overdue when any open action is past its due date, on track when actions are open and none is overdue, and "no open actions" otherwise. "Due in the next 7 days" includes overdue actions. Contract value is summed per currency from each project's value excluding VAT.
 
 The visual design is Drawing office by day and Night shift by night (approved 3 October 2026). Auto follows the device's light or dark setting. The interface is in English; text the user types in Arabic displays right to left. Amounts use Latin currency codes such as "SAR" and Western digits, and dates use the Gregorian calendar.
 
 Each task starts at its own first event and opens fitted to its full history. A shared date ruler is not the default. Task zoom controls are local to each task. Mutations, undo and redo return the views to fit. A larger task workspace opens as a dialog and remains editable.
+
+The workspace has an All tasks tab followed by one tab per project. Tasks within a project can be reordered. Activity points can be moved horizontally and vertically for presentation without changing their dates or connections; Tidy layout removes a task's manual offsets. The Hand tool pans horizontally within a task and vertically through the project page.
 
 Descriptions appear above the lines. Full details appear on hover and keyboard focus. Clicking opens an editor. Plus controls between nodes insert events; small node ports currently support adding, branching and merging. The latest request to remove most node-plus controls remains pending.
 
@@ -40,12 +42,12 @@ Each project can hold optional commercial details shown above the task timelines
 
 Projects are saved under the existing browser storage key, with a schema version. Migration preserves existing records: prior unfinished events become actions; prior completed events become recorded events. The owner can refine classification in the editor.
 
-Saved data that cannot be read is copied to a separate `.unreadable-` key and never overwritten; the app shows the sample project and offers the copy for download. Export writes all projects to a JSON backup file; import validates the file, asks for confirmation, replaces all data and can be undone. When another tab saves, open tabs load that data and clear their session undo history.
+Saved data that cannot be read is copied to a separate `.unreadable-` key and never overwritten; the app shows the sample project and offers the copy for download. Export writes all projects to a JSON backup file; import validates its structure and calendar dates, asks for confirmation, replaces all data and can be undone. When another tab saves, open tabs load that data and clear their session undo history.
 
 ## Accounts and syncing
 
 Visitors land on a public page at revtimeline.tech. They can create an account with email and password (the address must be confirmed through an emailed link before signing in), sign in with Google or LinkedIn once those providers are switched on in Supabase, reset a forgotten password by email, or try the app without an account, which keeps projects in that browser only.
 
-A signed-in person's projects are stored as one workspace in Supabase (supabase/schema.sql), protected by row-level security so only its owner can read or change it. Each device keeps a copy so the app opens instantly and works offline; changes upload in the background. A save names the version it was based on, and the server refuses it if another device saved since. In that case the latest saved version is shown and this device's version is kept, so the person can choose either one or download it. Other open devices load new saves within seconds. On first sign-in, the person chooses to upload the projects from that browser, start with an empty project, or start with the example project. Signing out removes the device's copy; it is refused while changes have not yet reached the account.
+A signed-in person's projects are stored as one workspace in Supabase (supabase/schema.sql), protected by row-level security so only its owner can read or change it. Each device keeps a copy so the app opens instantly and works offline; changes upload in the background. A save names the version it was based on, and the server refuses it if another device saved since. In that case the latest saved version is shown and this device's version is kept, including after a reload, so the person can choose either one or download it. Other open devices load new saves within seconds. On first sign-in, the person chooses to upload the projects from that browser, start with an empty project, or start with the example project. Signing out removes the current device's copy and session without ending sessions on other devices; it is refused while changes have not yet reached the account or a conflict remains unresolved.
 
 There is no shared team workspace, subscription billing or sign-in by username yet: accounts sign in by email. Dates use calendar-day precision. Automated browser end-to-end checks in CI and final visual refinement remain work items.

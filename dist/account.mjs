@@ -56,7 +56,7 @@ export function createAccount() {
       return auth.updateUser({ password });
     },
     signOut() {
-      return auth.signOut();
+      return auth.signOut({ scope: 'local' });
     },
     async load() {
       const { data, error } = await client.from('workspaces').select('data, version').maybeSingle();

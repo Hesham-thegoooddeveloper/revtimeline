@@ -137,6 +137,7 @@ const guestAllowed = () => {
   }
 };
 const accountKey = () => `${key}.account-${user.id}`;
+const conflictKey = () => `${accountKey()}.conflict`;
 function writeAccountCache(dirty) {
   try {
     localStorage.setItem(accountKey(), JSON.stringify({ version: sync.version, dirty, data }));
@@ -146,6 +147,16 @@ function readAccountCache() {
   try {
     const cached = JSON.parse(localStorage.getItem(accountKey()));
     return cached && !checkData(migrate(cached.data)) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+function readAccountConflict() {
+  try {
+    const raw = localStorage.getItem(conflictKey());
+    if (!raw) return null;
+    const saved = migrate(JSON.parse(raw));
+    return checkData(saved) ? null : saved;
   } catch {
     return null;
   }
@@ -313,7 +324,17 @@ function taskMarkup(t, width, surface = 'main') {
     }
     y = nodeY + Math.max(0, nodeTracks.length - 1) * 46 + 52;
   }
-  const height = Math.max(172, y + 12);
+  for (const e of t.events) {
+    const n = nodes.get(e.id),
+      offset = e.layout || { dx: 0, dy: 0 },
+      dx = Math.max(78 - n.x, offset.dx),
+      dy = Math.max(8 - n.labelY, offset.dy);
+    n.x += dx;
+    n.y += dy;
+    n.labelY += dy;
+  }
+  const height = Math.max(172, y + 12, ...[...nodes.values()].map((n) => n.y + 52)),
+    canvasWidth = Math.max(b.width, ...[...nodes.values()].map((n) => n.x + 90));
   geometry.set(surface + ':' + t.id, { ...b, nodes });
   let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
   for (let i = 0; i < t.edges.length; i++) {
@@ -337,9 +358,9 @@ function taskMarkup(t, width, surface = 'main') {
     svg += `<g class="node" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
-    ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
+    ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${canvasWidth}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
-  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit ${esc(t.name)} timeline">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
+  return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit ${esc(t.name)} timeline">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
 const number = (n) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 }),
   money = (n, currency) => (n === null ? '—' : `${currency ? currency + ' ' : ''}${number(n)}`);
@@ -405,6 +426,16 @@ function render() {
   document.title = 'RevTimeline';
   ensureActive();
   renderRail();
+  $('workspace-tabs').innerHTML =
+    `<a href="#/portfolio" class="workspace-tab" ${view === 'portfolio' ? 'aria-current="page"' : ''}>All tasks <span>${data.projects.reduce((n, p) => n + p.tasks.length, 0)}</span></a>` +
+    data.projects
+      .map(
+        (p) =>
+          `<a href="#/project/${p.id}" class="workspace-tab" ${view === 'project' && active === p.id ? 'aria-current="page"' : ''} dir="auto">${esc(p.name)}</a>`,
+      )
+      .join('') +
+    `<button class="workspace-tab add-tab" id="new-project-tab" aria-label="New project">＋</button>`;
+  $('new-project-tab').onclick = () => openName('project');
   const name = user ? user.user_metadata?.name || user.email : 'Your workspace';
   $('account-name').textContent = name;
   $('avatar').textContent = user ? initials(name) : 'PM';
@@ -418,7 +449,7 @@ function renderRail() {
   const now = today();
   if (view === 'portfolio') $('portfolio-nav').setAttribute('aria-current', 'page');
   else $('portfolio-nav').removeAttribute('aria-current');
-  $('portfolio-count').textContent = data.projects.length;
+  $('portfolio-count').textContent = data.projects.reduce((n, p) => n + p.tasks.length, 0);
   $('project-nav').innerHTML = data.projects
     .map(
       (p) =>
@@ -454,6 +485,16 @@ function renderPortfolio() {
     soon = dueSoon(projects, now),
     values = contractValue(projects),
     valued = projects.filter((p) => Number.isFinite(p.details?.value)).length;
+  $('all-tasks').innerHTML =
+    projects
+      .flatMap((p) =>
+        p.tasks.map((t) => {
+          const events = [...t.events].sort((a, b) => day(visibleDate(a)) - day(visibleDate(b))),
+            shown = events.slice(0, 8);
+          return `<a class="all-task-card" href="#/project/${p.id}"><div class="all-task-head"><strong dir="auto">${esc(t.name)}</strong><span dir="auto">${esc(p.name)}</span></div><div class="all-task-track">${shown.length ? shown.map((e) => `<div class="all-task-point"><i class="${e.kind === 'fact' ? 'fact' : e.done ? 'done' : 'open'}"></i><span dir="auto">${esc(e.description)}</span><small>${shortDate(visibleDate(e))}</small></div>`).join('') : '<span class="muted">No activity yet</span>'}</div></a>`;
+        }),
+      )
+      .join('') || '<p class="empty">No tasks yet. Create a project to get started.</p>';
   $('today-label').textContent = new Date(now + 'T12:00:00Z').toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -522,14 +563,22 @@ function renderProject() {
   $('task-count').textContent =
     `${plural(p.tasks.length, 'task')} · ${plural(events.length, 'event')}`;
   const width = Math.max(240, $('viewport').clientWidth - 36);
+  const scrollPositions = new Map(
+    [...$('timeline-content').querySelectorAll('.task-scroll')].map((el) => [
+      el.dataset.scroll,
+      el.scrollLeft,
+    ]),
+  );
   $('timeline-content').innerHTML = p.tasks.length
     ? p.tasks
         .map(
           (t) =>
-            `<div class="task-row"><div class="task-label"><span class="task-name" dir="auto">${esc(t.name)}</span><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span></div>${taskMarkup(t, width)}</div>`,
+            `<div class="task-row" data-task-row="${t.id}"><div class="task-label"><button class="task-handle" draggable="true" data-drag-task="${t.id}" aria-label="Drag to reorder ${esc(t.name)}" title="Drag to reorder">⠿</button><span class="task-name" dir="auto">${esc(t.name)}</span><span class="task-meta">${plural(t.events.length, 'event')} · ${new Set(t.events.map((e) => e.lane)).size > 1 ? 'Parallel paths' : 'Main path'}</span><span class="task-order"><button class="icon-button" data-move-task="${t.id}" data-direction="-1" aria-label="Move ${esc(t.name)} up">↑</button><button class="icon-button" data-move-task="${t.id}" data-direction="1" aria-label="Move ${esc(t.name)} down">↓</button></span></div>${taskMarkup(t, width)}</div>`,
         )
         .join('')
     : '<div class="empty-task">No tasks yet. Add a task to start its timeline.</div>';
+  for (const el of $('timeline-content').querySelectorAll('.task-scroll'))
+    el.scrollLeft = scrollPositions.get(el.dataset.scroll) || 0;
   $('undo').disabled = !undoStack.length;
   $('redo').disabled = !redoStack.length;
 }
@@ -947,10 +996,15 @@ function openConnection(tid, index) {
 }
 function handleClick(e) {
   const target = e.target.closest(
-    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event]',
+    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task]',
   );
   if (!target || drag) return;
-  if (target.dataset.first) openEditor(target.dataset.first);
+  if (target.dataset.moveTask) moveTask(target.dataset.moveTask, Number(target.dataset.direction));
+  else if (target.dataset.tidy)
+    commit(() => {
+      for (const event of taskBy(target.dataset.tidy).events) delete event.layout;
+    });
+  else if (target.dataset.first) openEditor(target.dataset.first);
   else if (target.dataset.zoom) {
     const k = target.dataset.surface + ':' + target.dataset.task;
     viewZoom[k] = Math.min(
@@ -969,11 +1023,42 @@ function handleClick(e) {
   else if (target.dataset.event)
     openEditor(target.dataset.task, target.dataset.event, null, false, target);
 }
+function moveTask(id, step, toId = null) {
+  const tasks = project().tasks,
+    from = tasks.findIndex((t) => t.id === id),
+    to = toId ? tasks.findIndex((t) => t.id === toId) : from + step;
+  if (from < 0 || to < 0 || to >= tasks.length || from === to) return;
+  commit(() => {
+    tasks.splice(to, 0, tasks.splice(from, 1)[0]);
+  });
+}
+let draggedTask = null;
+$('timeline-content').addEventListener('dragstart', (e) => {
+  const handle = e.target.closest('[data-drag-task]');
+  if (!handle) return;
+  draggedTask = handle.dataset.dragTask;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', draggedTask);
+});
+$('timeline-content').addEventListener('dragover', (e) => {
+  if (!draggedTask || !e.target.closest('[data-task-row]')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+});
+$('timeline-content').addEventListener('drop', (e) => {
+  const row = e.target.closest('[data-task-row]');
+  if (!draggedTask || !row) return;
+  e.preventDefault();
+  moveTask(draggedTask, 0, row.dataset.taskRow);
+  draggedTask = null;
+});
+$('timeline-content').addEventListener('dragend', () => (draggedTask = null));
 for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   container.addEventListener(
     'click',
     (e) => {
-      if (performance.now() >= suppressClickUntil) return;
+      if (performance.now() >= suppressClickUntil || !e.target.closest('[data-event],[data-port]'))
+        return;
       suppressClickUntil = 0;
       e.stopPropagation();
       e.preventDefault();
@@ -1075,8 +1160,9 @@ function beginDrag(e) {
       surface: svg.dataset.surface,
     };
   } else if (node && !panning) {
+    e.preventDefault();
     drag = {
-      kind: 'move',
+      kind: 'arrange',
       tid: node.dataset.task,
       eid: node.dataset.event,
       startX: e.clientX,
@@ -1092,6 +1178,7 @@ function beginDrag(e) {
       startY: e.clientY,
       left: scroll.scrollLeft,
       top: scroll.scrollTop,
+      pageTop: window.scrollY,
       scroll,
       moved: false,
     };
@@ -1105,7 +1192,8 @@ window.addEventListener('pointermove', (e) => {
   if (Math.abs(dx) + Math.abs(dy) > 7) drag.moved = true;
   if (drag.kind === 'pan') {
     drag.scroll.scrollLeft = drag.left - dx;
-    drag.scroll.scrollTop = drag.top - dy;
+    if (drag.scroll.dataset.surface === 'modal') drag.scroll.scrollTop = drag.top - dy;
+    else window.scrollTo(window.scrollX, drag.pageTop - dy);
   }
   if (drag.kind === 'connect') {
     const r = drag.svg.getBoundingClientRect(),
@@ -1124,7 +1212,8 @@ window.addEventListener('pointermove', (e) => {
     )
       target.querySelector('.event-circle').classList.add('merge-target');
   }
-  if (drag.kind === 'move' && drag.moved) drag.node.setAttribute('transform', `translate(${dx},0)`);
+  if (drag.kind === 'arrange' && drag.moved)
+    drag.node.setAttribute('transform', `translate(${dx},${dy})`);
 });
 window.addEventListener('pointerup', (e) => {
   if (!drag) return;
@@ -1154,35 +1243,32 @@ window.addEventListener('pointerup', (e) => {
         branch = d.moved && Math.abs(e.clientY - d.startY) > 40;
       openEditor(d.tid, null, d.from, branch, d.port, date);
     }
-  } else if (d.kind === 'move' && d.moved) {
+  } else if (d.kind === 'arrange' && d.moved) {
     const t = taskBy(d.tid),
       ev = t.events.find((e) => e.id === d.eid),
       g = geometry.get(d.surface + ':' + d.tid),
-      delta = Math.round((e.clientX - d.startX) / g.scale);
-    if (delta) {
-      const nd = iso(day(visibleDate(ev)) + delta);
-      commit(() => {
-        const result = updateEvent(
-          taskBy(d.tid),
-          d.eid,
-          ev.kind === 'fact'
-            ? { occurred: nd, actual: nd }
-            : ev.done
-              ? { actual: nd }
-              : { scheduled: nd },
-        );
-        return result.error;
-      });
-    } else {
-      render();
-      if (focusedTask) renderTaskDialog();
-    }
-  } else if (d.kind === 'move') {
+      n = g.nodes.get(d.eid),
+      offset = ev.layout || { dx: 0, dy: 0 };
+    commit(() => {
+      taskBy(d.tid).events.find((x) => x.id === d.eid).layout = {
+        dx: Math.round(
+          Math.max(-5000, 78 - n.x + offset.dx, Math.min(5000, offset.dx + e.clientX - d.startX)),
+        ),
+        dy: Math.round(
+          Math.max(
+            -5000,
+            8 - n.labelY + offset.dy,
+            Math.min(5000, offset.dy + e.clientY - d.startY),
+          ),
+        ),
+      };
+    });
+  } else if (d.kind === 'arrange') {
     openEditor(d.tid, d.eid, null, false, d.node);
   }
   // Ignore the click the browser fires right after this pointerup. A time window, rather than a
   // one-off listener, cannot swallow a later click when the pointer was released elsewhere.
-  if (d.moved || d.kind === 'move') suppressClickUntil = performance.now() + 400;
+  if (d.moved || d.kind === 'arrange') suppressClickUntil = performance.now() + 400;
 });
 function showCalendar() {
   const date = $('calendar-date').value,
@@ -1423,7 +1509,14 @@ const STATUS_TEXT = {
 function setStatus(state) {
   if (!user) return;
   $('saved').textContent = STATUS_TEXT[state] || '';
-  if (state === 'saved') writeAccountCache(false);
+  if (state === 'saved') {
+    writeAccountCache(false);
+    if (!conflictMine) {
+      try {
+        localStorage.removeItem(conflictKey());
+      } catch {}
+    }
+  }
 }
 function remoteData(latest) {
   const incoming = migrate(structuredClone(latest.data)),
@@ -1476,7 +1569,8 @@ async function startAccount(sessionUser) {
       }
     },
   });
-  const cached = readAccountCache();
+  const cached = readAccountCache(),
+    savedConflict = readAccountConflict();
   if (cached) {
     data = migrate(cached.data);
     sync.setVersion(cached.version);
@@ -1494,9 +1588,13 @@ async function startAccount(sessionUser) {
     sync.setVersion(0);
     save();
     await sync.flushNow();
+  } else if (savedConflict) {
+    sync.setVersion(latest.version);
+    showConflict(latest, savedConflict);
   } else if (cached?.dirty && cached.version === latest.version) {
     save(); // Upload changes made on this device while it was offline.
   } else if (cached?.dirty) {
+    sync.setVersion(latest.version);
     showConflict(latest, cached.data);
   } else {
     data = remoteData(latest);
@@ -1533,15 +1631,18 @@ function enterAccount(sessionUser) {
 }
 function showConflict(latest, mine) {
   conflictMine = mine;
+  let keptOnDevice = false;
   try {
-    localStorage.setItem(`${accountKey()}.conflict`, JSON.stringify(mine));
+    localStorage.setItem(conflictKey(), JSON.stringify(mine));
+    keptOnDevice = true;
   } catch {}
   try {
     replaceData(remoteData(latest));
   } catch (err) {
     toast(err.message);
   }
-  setStatus('saved');
+  if (keptOnDevice) setStatus('saved');
+  else $('saved').textContent = "Conflict · download this device's version";
   $('conflict').hidden = false;
 }
 $('conflict-keep').onclick = () => {
@@ -1563,6 +1664,9 @@ $('conflict-download').onclick = () =>
 $('conflict-dismiss').onclick = () => {
   conflictMine = null;
   $('conflict').hidden = true;
+  try {
+    localStorage.removeItem(conflictKey());
+  } catch {}
 };
 // Leaves the account. Projects stay in the account; this device's copy is removed.
 function leaveAccount() {
@@ -1583,6 +1687,10 @@ function leaveAccount() {
   go('#/');
 }
 async function signOut() {
+  if (conflictMine) {
+    toast('Choose a workspace version before signing out.');
+    return;
+  }
   if (!sync.idle()) await sync.flushNow().catch(() => {});
   if (!sync.idle()) {
     toast(
@@ -1590,8 +1698,14 @@ async function signOut() {
     );
     return;
   }
-  await account.signOut().catch(() => {});
-  leaveAccount();
+  try {
+    const { error } = await account.signOut();
+    if (error) throw error;
+  } catch (err) {
+    toast('Sign out failed. ' + friendlyError(err));
+    return;
+  }
+  if (user) leaveAccount();
 }
 $('account-action').onclick = () => (user ? signOut() : go('#/sign-in'));
 document.addEventListener('visibilitychange', () => {
