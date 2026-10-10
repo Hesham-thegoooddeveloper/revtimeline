@@ -6,7 +6,7 @@ export function iso(n) {
   return new Date(n * DAY).toISOString().slice(0, 10);
 }
 export function visibleDate(e) {
-  return e.kind === 'fact' ? e.occurred : e.done ? e.actual : e.scheduled;
+  return e.kind === 'fact' ? e.occurred : e.done ? e.actual : e.scheduled || e.triggered;
 }
 export const SCHEMA_VERSION = 1;
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -107,7 +107,8 @@ export function checkData(data) {
               Math.abs(e.layout.dx) > 5000 ||
               Math.abs(e.layout.dy) > 5000)) ||
           !validDate(visibleDate(e)) ||
-          (e.kind === 'action' && (!validDate(e.triggered) || !validDate(e.scheduled))) ||
+          (e.kind === 'action' &&
+            (!validDate(e.triggered) || (e.scheduled != null && !validDate(e.scheduled)))) ||
           ['occurred', 'triggered', 'planned', 'scheduled', 'actual'].some(
             (field) => e[field] != null && !validDate(e[field]),
           )
@@ -156,9 +157,10 @@ export function updateEvent(task, id, values) {
         other.id !== id &&
         other.kind === 'action' &&
         !other.done &&
-        day(other.scheduled) >= old
+        day(visibleDate(other)) >= old
       ) {
-        other.scheduled = iso(day(other.scheduled) + delta);
+        if (other.scheduled) other.scheduled = iso(day(other.scheduled) + delta);
+        other.triggered = iso(day(other.triggered) + delta);
         shifted++;
       }
     }
@@ -181,6 +183,10 @@ export function canConnect(task, from, to) {
     task.edges.filter((e) => e[0] === id).forEach((e) => queue.push(e[1]));
   }
   return true;
+}
+export function connectBefore(task, newId, targetId) {
+  for (const edge of task.edges) if (edge[1] === targetId) edge[1] = newId;
+  task.edges.push([newId, targetId]);
 }
 export function removeEvent(task, id) {
   task.events = task.events.filter((e) => e.id !== id);

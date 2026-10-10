@@ -4,6 +4,7 @@ import {
   updateEvent,
   validateTask,
   canConnect,
+  connectBefore,
   migrate,
   visibleDate,
   removeEvent,
@@ -94,6 +95,25 @@ test('completion before trigger is rejected without changing data', () => {
     before = structuredClone(t);
   assert(updateEvent(t, 'review', { done: true, actual: '2026-09-30' }).error);
   assert.deepEqual(t, before);
+});
+test('an action can have no target date and uses its trigger date on the timeline', () => {
+  const t = {
+    events: [
+      fact('start', '2026-10-08'),
+      {
+        ...action('followup', '2026-10-12'),
+        triggered: '2026-10-10',
+        scheduled: null,
+        planned: null,
+      },
+    ],
+    edges: [['start', 'followup']],
+  };
+  assert.equal(visibleDate(t.events[1]), '2026-10-10');
+  assert.equal(validateTask(t), null);
+  assert.deepEqual(updateEvent(t, 'start', { occurred: '2026-10-07' }), { delta: -1, shifted: 1 });
+  assert.equal(t.events[1].triggered, '2026-10-09');
+  assert.equal(t.events[1].scheduled, null);
 });
 test('branch merges cannot create loops or duplicate connections', () => {
   const t = task();
@@ -188,19 +208,42 @@ test('date shifts include upcoming actions on unconnected parallel paths', () =>
   assert.equal(t.events[2].scheduled, '2026-10-21');
 });
 
-// Known defect from the October 2026 audit, awaiting an owner decision on trigger-date shifts.
-// Until then the rejection names the blocked action (covered below).
-test(
-  'moving an event earlier also moves downstream trigger dates',
-  { todo: 'audit #4: shifts move due dates but not trigger dates' },
-  () => {
-    const t = {
-      events: [fact('x', '2026-10-10'), { ...action('y', '2026-10-15'), triggered: '2026-10-14' }],
-      edges: [['x', 'y']],
-    };
-    assert.equal(updateEvent(t, 'x', { occurred: '2026-10-05' }).error, undefined);
-  },
-);
+test('moving an event earlier moves upcoming due and trigger dates together', () => {
+  const t = {
+    events: [fact('x', '2026-10-10'), { ...action('y', '2026-10-15'), triggered: '2026-10-14' }],
+    edges: [['x', 'y']],
+  };
+  assert.deepEqual(updateEvent(t, 'x', { occurred: '2026-10-05' }), {
+    delta: -5,
+    shifted: 1,
+  });
+  assert.equal(t.events[1].scheduled, '2026-10-10');
+  assert.equal(t.events[1].triggered, '2026-10-09');
+  assert.equal(t.events[1].planned, '2026-10-15');
+  assert.equal(validateTask(t), null);
+});
+test('adding before an event preserves all incoming paths and existing dates', () => {
+  const t = {
+    events: [fact('a', '2026-10-08'), fact('b', '2026-10-09', 1), fact('c', '2026-10-10')],
+    edges: [
+      ['a', 'c'],
+      ['b', 'c'],
+    ],
+  };
+  t.events.push(fact('before', '2026-10-09'));
+  connectBefore(t, 'before', 'c');
+  assert.deepEqual(t.edges, [
+    ['a', 'before'],
+    ['b', 'before'],
+    ['before', 'c'],
+  ]);
+  assert.equal(validateTask(t), null);
+  assert.deepEqual(t.events.slice(0, 3).map(visibleDate), [
+    '2026-10-08',
+    '2026-10-09',
+    '2026-10-10',
+  ]);
+});
 test('validation errors name the event that is invalid', () => {
   const t = task();
   t.events[0] = { ...t.events[0], description: 'Legacy record', actual: null, occurred: null };

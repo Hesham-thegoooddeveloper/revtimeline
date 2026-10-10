@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { timelineLayout } from '../dist/timeline-layout.mjs';
+import { timelineLayout, fitTimelineZoom } from '../dist/timeline-layout.mjs';
 import { visibleDate } from '../dist/model.mjs';
 
 const event = (id, date, lane = 0) => ({
@@ -31,7 +31,7 @@ test('same-day activities stack below their predecessors, including inserted con
   assert.deepEqual(task.events.map(visibleDate), datesBefore);
 });
 
-test('dense dates extend the scrollable canvas and keep a readable gap after Fit', () => {
+test('dense dates stay readable in Tidy and fit in the viewport in Fit mode', () => {
   const task = {
     events: Array.from({ length: 24 }, (_, index) =>
       event('event-' + index, '2026-10-' + String(index + 1).padStart(2, '0')),
@@ -40,13 +40,14 @@ test('dense dates extend the scrollable canvas and keep a readable gap after Fit
   };
   const datesBefore = task.events.map(visibleDate);
   for (const width of [360, 1100, 1600]) {
-    for (const zoom of [0.35, 1]) {
-      const layout = timelineLayout(task, width, zoom);
-      const positions = task.events.map((item) => layout.nodes.get(item.id).x);
-      assert(positions.every((x, index) => index === 0 || x - positions[index - 1] >= 184));
-      assert(layout.width > width);
-      assert(layout.dateAt(positions[10]) === layout.start + 10);
-    }
+    const tidy = timelineLayout(task, width);
+    const positions = task.events.map((item) => tidy.nodes.get(item.id).x);
+    assert(positions.every((x, index) => index === 0 || x - positions[index - 1] >= 184));
+    assert(tidy.width > width);
+    assert(tidy.dateAt(positions[10]) === tidy.start + 10);
+    const fit = timelineLayout(task, width, fitTimelineZoom(task, width));
+    assert(fit.width <= width);
+    assert(fit.zoom < 0.75);
   }
   assert.deepEqual(task.events.map(visibleDate), datesBefore);
 });

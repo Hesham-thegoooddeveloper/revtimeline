@@ -25,6 +25,21 @@ test('project status reports overdue actions against today', () => {
   assert.deepEqual(projectStatus(alpha, '2026-10-12'), { key: 'overdue', overdue: 1, open: 9 });
   assert.equal(projectStatus({ tasks: [] }, '2026-10-03').key, 'idle');
 });
+test('untargeted actions are open but never overdue or due soon', () => {
+  const project = {
+    tasks: [
+      {
+        id: 't',
+        events: [
+          { id: 'a', kind: 'action', triggered: '2026-10-01', scheduled: null, done: false },
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(projectStatus(project, '2026-12-01'), { key: 'on-track', overdue: 0, open: 1 });
+  assert.deepEqual(dueSoon([project], '2026-12-01'), []);
+  assert.equal(nextAction(project).event.id, 'a');
+});
 
 test('due soon lists late and upcoming actions across projects in due order', () => {
   assert.deepEqual(

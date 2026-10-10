@@ -7,7 +7,7 @@
     <title>RevTimeline</title>
     <meta name="description" content="Track the history of your projects, one event at a time." />
     <link rel="icon" href="favicon.svg" />
-    <link rel="stylesheet" href="style.css?v=2026-10-10-sameday-layout" />
+    <link rel="stylesheet" href="style.css?v=2026-10-10-workflow-refresh" />
     <script>
       // Apply the saved colour mode before the first paint to avoid a flash.
       try {
@@ -354,17 +354,24 @@
       hidden
     >
       <div class="popup-heading">
-        <h2 id="editor-title">Event details</h2>
+        <div>
+          <span class="label" id="editor-task" dir="auto"></span>
+          <h2 id="editor-title">Event details</h2>
+        </div>
         <button class="icon-button" id="close-editor" aria-label="Close event details">×</button>
       </div>
       <form id="event-form">
-        <label
-          >Event type
-          <select id="event-kind">
-            <option value="fact">Recorded event — something happened</option>
-            <option value="action">Action — something to do</option>
-          </select>
-        </label>
+        <fieldset id="event-kind" class="event-type-options">
+          <legend>Event type</legend>
+          <label>
+            <input type="radio" name="event-kind" value="fact" checked />
+            <span class="type-card"><span class="type-dot fact"></span><span><strong>Recorded event</strong><small>Something happened</small></span></span>
+          </label>
+          <label>
+            <input type="radio" name="event-kind" value="action" />
+            <span class="type-card"><span class="type-dot action"></span><span><strong>Action needed</strong><small>Something to do</small></span></span>
+          </label>
+        </fieldset>
         <label
           >Description
           <textarea
@@ -384,22 +391,48 @@
             ><input type="date" id="event-date" required
           /></label>
           <label id="trigger-field">Trigger date<input type="date" id="event-trigger" /></label>
-          <label id="due-field">Due date<input type="date" id="event-due" /></label>
+          <label id="target-toggle" class="check-label"><input id="event-has-target" type="checkbox" /> Set a target date</label>
+          <label id="due-field">Target date<input type="date" id="event-due" /></label>
           <label id="plan-field"
             >Original due date<input type="date" id="event-plan" readonly
           /></label>
         </div>
         <p class="popup-meta" id="event-meta"></p>
+        <p class="popup-meta" id="event-position"></p>
         <label id="branch-field" class="check-label"
           ><input type="checkbox" id="event-branch" /> Create a parallel branch</label
         >
+        <details class="date-rules">
+          <summary>Date rules</summary>
+          <p>Connected activities may share a day, but a successor cannot be dated before its predecessor. An action with no target sits at its trigger date and is not overdue. A target or completion cannot be before its trigger. Editing a visible date shifts later unfinished actions’ dates by the same number of days; original target dates and completed records stay fixed.</p>
+        </details>
+        <button type="button" id="add-sequence-from-event" class="button small">＋ Add several after this activity</button>
         <p id="event-warning" class="warning" hidden></p>
         <div class="popup-actions">
           <button type="button" id="delete-event" class="button danger">Delete</button>
+          <button type="button" id="add-before-event" class="button">＋ Add before</button>
           <button type="submit" class="button primary">Save event</button>
         </div>
       </form>
     </section>
+
+    <dialog id="batch-dialog" class="batch-dialog">
+      <form id="batch-form">
+        <div class="popup-heading">
+          <div><span class="label" id="batch-task" dir="auto"></span><h2>Add several activities</h2></div>
+          <button class="icon-button" type="button" id="close-batch" aria-label="Close">×</button>
+        </div>
+        <p class="popup-meta">Enter activities in connection order. They are saved together, so an invalid date leaves the whole list unchanged.</p>
+        <label>Connect after<select id="batch-source"></select></label>
+        <div id="batch-rows"></div>
+        <button class="button" type="button" id="batch-add-row">＋ Add another activity</button>
+        <p class="warning" id="batch-warning" hidden></p>
+        <div class="popup-actions">
+          <button class="button" type="button" id="cancel-batch">Cancel</button>
+          <button class="button primary" type="submit">Save all activities</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="name-dialog">
       <form id="name-form">
@@ -439,21 +472,34 @@
 
     <dialog id="calendar-dialog" class="calendar-dialog">
       <div class="popup-heading">
-        <h2>Calendar</h2>
+        <div><span class="label">Across all projects</span><h2>Calendar</h2></div>
         <button class="icon-button" id="close-calendar" aria-label="Close calendar">×</button>
       </div>
-      <label>Day<input id="calendar-date" type="date" /></label>
+      <div class="calendar-toolbar">
+        <div class="calendar-month-nav">
+          <button class="icon-button" id="calendar-prev" aria-label="Previous month">‹</button>
+          <strong id="calendar-month"></strong>
+          <button class="icon-button" id="calendar-next" aria-label="Next month">›</button>
+        </div>
+        <button class="button small" id="calendar-today">Today</button>
+      </div>
+      <div class="calendar-weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div id="calendar-grid" class="calendar-grid" role="group" aria-label="Choose a day"></div>
+      <div class="calendar-selection"><h3 id="calendar-selected-label"></h3><label>Jump to day<input id="calendar-date" type="date" /></label></div>
       <div id="calendar-results"></div>
     </dialog>
 
     <dialog id="connection-dialog">
       <div class="popup-heading">
-        <h2>Connection direction</h2>
+        <h2>Connection</h2>
         <button class="icon-button" id="close-connection" aria-label="Close connection">×</button>
       </div>
       <p id="connection-summary" dir="auto"></p>
-      <p>Arrow direction changes the relationship shown, without moving event dates.</p>
-      <button class="button primary" id="reverse-connection">Reverse arrow</button>
+      <p>Change or remove this connection without changing either activity or its date. You can reconnect activities by dragging from a point’s + handle to another point.</p>
+      <div class="popup-actions">
+        <button class="button danger" id="delete-connection">Delete connection</button>
+        <button class="button primary" id="reverse-connection">Reverse arrow</button>
+      </div>
     </dialog>
 
     <dialog id="import-dialog">
@@ -561,6 +607,6 @@
     <div id="hover-preview" role="tooltip" hidden></div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
     <script src="vendor/supabase.js"></script>
-    <script type="module" src="app.mjs?v=2026-10-10-sameday-layout"></script>
+    <script type="module" src="app.mjs?v=2026-10-10-workflow-refresh"></script>
   </body>
 </html>
