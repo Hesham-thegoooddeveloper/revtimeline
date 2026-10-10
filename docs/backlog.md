@@ -14,13 +14,13 @@ Add a short hover delay and improve preview appearance. Improve the overall UI i
 
 ## Editable project information
 
-**Partly implemented (3 October 2026):** project name, scope, customer, currency, value excluding VAT, configurable VAT rate, calculated VAT and total, and payment-term milestones with percentages and conditions. Still pending: project reference, customer contact, status, PO reference and date, quantities, payment periods and advance-payment fields, delivery, guarantees, letter of credit, notes, and a separate Project details view.
+**Partly implemented (10 October 2026):** project name and number, scope, customer, contractor, currency, value excluding VAT, configurable VAT rate, calculated VAT and total, and payment-term milestones with percentages and conditions. Still pending: customer contact, status, PO reference and date, quantities, payment periods and advance-payment fields, delivery, guarantees, letter of credit, notes, and a fuller Project details view. The owner will provide a more complete project template and schema in a later revision.
 
 Provide project creation and editing with the following approved field groups:
 
 | Group | Fields |
 |---|---|
-| Identity | Project name, project reference, customer, customer contact, scope, status |
+| Identity | Project name, project number, customer, contractor, customer contact, scope, status |
 | Purchase order | PO reference, PO date, currency, project/PO value excluding VAT |
 | VAT | Configurable VAT rate supplied by the owner, calculated VAT amount, calculated total including VAT |
 | Quantities | Number of PO line items and total quantity of units separately |
@@ -32,7 +32,7 @@ Provide project creation and editing with the following approved field groups:
 
 Treat PO value and project value as one amount initially unless approved variations make separate figures necessary. No VAT rate has been supplied; do not silently assume one.
 
-The existing commercial overview, next actions and payment terms now appear in a right-side project information panel. It is docked on wide screens and opens as a drawer on narrower screens. A fuller Project details view with the remaining fields is still pending. The overview direction was approved using fictitious sample data; sample customers, money values, terms and dates are not real requirements.
+The current project identity and commercial summary, payment terms and next actions appear in a right-side project information panel. All tasks has a matching right panel for project count, grouped value and next actions. Both are docked on wide screens and open as drawers on narrower screens. A fuller Project details view with the remaining fields is still pending. The overview direction was approved using fictitious sample data; sample customers, money values, terms and dates are not real requirements.
 
 ## Later milestones
 

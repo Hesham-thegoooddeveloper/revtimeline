@@ -20,7 +20,7 @@ Connections cannot form loops. Reversing a displayed arrow changes relationship 
 
 ## Current experience
 
-The app opens on All tasks across projects, with the portfolio summary below. A project's status is derived from its actions: overdue when any open action is past its due date, on track when actions are open and none is overdue, and "no open actions" otherwise. "Due in the next 7 days" includes overdue actions. Contract value is summed per currency from each project's value excluding VAT.
+The app opens on All tasks across projects, with a right information panel showing the total number of projects, contract value excluding VAT grouped by currency, open and overdue action counts, and the next open actions. A project's status is derived from its actions: overdue when any open action is past its due date, on track when actions are open and none is overdue, and "no open actions" otherwise. The project list remains below the task cards.
 
 The visual design is Drawing office by day and Night shift by night (approved 3 October 2026). Auto follows the device's light or dark setting. The interface is in English; text the user types in Arabic displays right to left. Amounts use Latin currency codes such as "SAR" and Western digits, and dates use the Gregorian calendar.
 
@@ -42,9 +42,9 @@ Ctrl+Z/Cmd+Z undo app changes; Ctrl+Shift+Z/Cmd+Shift+Z/Ctrl+Y redo them. Text f
 
 ## Project overview
 
-Each project can hold optional commercial details: customer, scope of supply, currency, value excluding VAT, VAT rate and payment terms (milestone, percentage and condition). VAT and the total including VAT are calculated automatically, rounded to two decimals, and only once a VAT rate has been entered; no rate is assumed. Payment terms may not exceed 100% in total; a lower total is allowed and flagged. Projects saved before this feature have no details and keep working unchanged. The other approved field groups remain in the backlog.
+Each project can hold optional commercial details: project number, customer, contractor, scope of supply, currency, value excluding VAT, VAT rate and payment terms (milestone, percentage and condition). VAT and the total including VAT are calculated automatically, rounded to two decimals, and only once a VAT rate has been entered; no rate is assumed. Payment terms may not exceed 100% in total; a lower total is allowed and flagged. Projects saved before this feature keep working unchanged, and missing fields display as "Not set". The other approved field groups remain in the backlog.
 
-Project details, next actions and payment terms appear in a right information column on wide screens. On narrower screens they open in a right-side panel so the timeline retains its width.
+The old left rail has been removed; calendar, colour mode and account controls appear in a compact header. Project details, payment terms and next actions appear in a right information column on wide screens. On narrower screens, project and portfolio information open in right-side drawers so the timeline retains its width.
 
 ## Persistence and limitations
 

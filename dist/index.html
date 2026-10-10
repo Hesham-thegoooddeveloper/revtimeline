@@ -43,7 +43,7 @@
     </div>
 
     <div class="shell" id="app-shell" hidden>
-      <aside class="rail" aria-label="Main menu">
+      <header class="workspace-header">
         <a class="logo" href="#/portfolio" aria-label="RevTimeline portfolio">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path class="logo-line" d="M2 8h20M6 8c4 0 4 9 9 9h7" />
@@ -52,20 +52,8 @@
           </svg>
           RevTimeline
         </a>
-        <nav class="rail-nav">
-          <a class="rail-link" id="portfolio-nav" href="#/portfolio">
-            All tasks <span class="n" id="portfolio-count"></span>
-          </a>
-          <button class="rail-link" id="calendar-nav">Calendar</button>
-        </nav>
-        <div class="rail-group">
-          <span class="label">Projects</span>
-          <button class="rail-add" id="new-project" aria-label="New project" title="New project">
-            +
-          </button>
-        </div>
-        <div class="project-nav" id="project-nav"></div>
-        <div class="rail-foot">
+        <div class="workspace-header-tools">
+          <button class="button small" id="calendar-nav">Calendar</button>
           <div class="mode-switch" role="group" aria-label="Colour mode">
             <button data-mode="auto" title="Follow this device's setting">Auto</button>
             <button data-mode="day">Day</button>
@@ -80,7 +68,7 @@
           </div>
           <button class="button small" id="account-action">Sign in to sync</button>
         </div>
-      </aside>
+      </header>
 
       <main class="main">
         <form class="quick-task" id="quick-task-form" aria-label="Add a task">
@@ -136,110 +124,162 @@
         </div>
 
         <section id="portfolio-view" class="view" aria-labelledby="portfolio-title" hidden>
-          <div class="page-head">
-            <div>
-              <span class="label" id="today-label"></span>
-              <h1 id="portfolio-title">All tasks</h1>
-            </div>
-            <div class="actions">
-              <button class="button" id="import" title="Replace all projects with a backup file">
-                Import backup
-              </button>
-              <button class="button" id="export" title="Download a backup file of all projects">
-                Export backup
-              </button>
-              <button class="button primary" id="new-project-main">+ New project</button>
-              <input type="file" id="import-file" accept="application/json,.json" hidden />
-            </div>
-          </div>
-          <section class="all-tasks" aria-label="Tasks across projects" id="all-tasks"></section>
-          <div class="kpis" id="kpis"></div>
-          <div class="portfolio-grid">
-            <section class="panel" aria-labelledby="projects-heading">
-              <div class="panel-head"><h2 id="projects-heading">Projects</h2></div>
-              <div class="ptable" id="project-table"></div>
-            </section>
-            <section class="panel" aria-labelledby="due-heading">
-              <div class="panel-head">
-                <h2 id="due-heading">Due in the next 7 days</h2>
-                <span class="muted" id="due-count"></span>
+          <div class="portfolio-layout">
+            <div class="portfolio-main">
+              <div class="page-head">
+                <div>
+                  <span class="label" id="today-label"></span>
+                  <h1 id="portfolio-title">All tasks</h1>
+                </div>
+                <div class="actions">
+                  <button
+                    class="button"
+                    id="portfolio-info-toggle"
+                    type="button"
+                    aria-controls="portfolio-info"
+                    aria-expanded="false"
+                  >
+                    Portfolio info
+                  </button>
+                  <button
+                    class="button"
+                    id="import"
+                    title="Replace all projects with a backup file"
+                  >
+                    Import backup
+                  </button>
+                  <button class="button" id="export" title="Download a backup file of all projects">
+                    Export backup
+                  </button>
+                  <button class="button primary" id="new-project-main">+ New project</button>
+                  <input type="file" id="import-file" accept="application/json,.json" hidden />
+                </div>
               </div>
-              <div class="due" id="due-list"></div>
-            </section>
+              <section
+                class="all-tasks"
+                aria-label="Tasks across projects"
+                id="all-tasks"
+              ></section>
+              <section class="panel" aria-labelledby="projects-heading">
+                <div class="panel-head"><h2 id="projects-heading">Projects</h2></div>
+                <div class="ptable" id="project-table"></div>
+              </section>
+            </div>
+            <aside
+              class="context-info portfolio-info"
+              id="portfolio-info"
+              aria-label="Portfolio information"
+            >
+              <div class="context-info-head">
+                <div>
+                  <span class="label">ALL PROJECTS</span>
+                  <h2>Portfolio information</h2>
+                </div>
+                <button
+                  class="icon-button context-info-close"
+                  id="portfolio-info-close"
+                  type="button"
+                  aria-label="Close portfolio information"
+                >
+                  ×
+                </button>
+              </div>
+              <div class="portfolio-summary" id="portfolio-summary"></div>
+              <section class="panel" aria-labelledby="portfolio-next-heading">
+                <div class="panel-head">
+                  <h2 id="portfolio-next-heading">Next actions</h2>
+                  <span class="muted" id="portfolio-next-count"></span>
+                </div>
+                <div class="portfolio-next" id="portfolio-next-actions"></div>
+              </section>
+            </aside>
           </div>
+          <button
+            class="context-info-scrim"
+            id="portfolio-info-scrim"
+            type="button"
+            aria-label="Close portfolio information"
+            hidden
+          ></button>
         </section>
 
         <section id="project-view" class="view" aria-labelledby="project-title" hidden>
-          <nav class="crumb" aria-label="Breadcrumb">
-            <a href="#/portfolio">All tasks</a> / <b id="crumb-project" dir="auto"></b>
-          </nav>
-          <div class="page-head">
-            <div>
-              <span class="label" id="project-ref" dir="auto"></span>
-              <div class="ptitle">
-                <h1 id="project-title" dir="auto"></h1>
-                <span id="project-status"></span>
-              </div>
-              <p id="project-description" dir="auto"></p>
-            </div>
-            <div class="actions">
-              <button
-                class="button"
-                id="project-info-toggle"
-                type="button"
-                aria-controls="project-info"
-                aria-expanded="false"
-              >
-                Project info
-              </button>
-              <button class="button primary" id="add-task">+ Add task</button>
-            </div>
-          </div>
           <div class="project-layout">
-            <section class="timeline" aria-label="Task timelines">
-              <div class="tl-tools">
-                <div class="tl-buttons">
-                  <button class="button small" id="undo" aria-label="Undo last change">
-                    ↶ Undo
-                  </button>
-                  <button class="button small" id="redo" aria-label="Redo last change">
-                    ↷ Redo
-                  </button>
+            <div class="project-main">
+              <nav class="crumb" aria-label="Breadcrumb">
+                <a href="#/portfolio">All tasks</a> / <b id="crumb-project" dir="auto"></b>
+              </nav>
+              <div class="page-head">
+                <div>
+                  <span class="label" id="project-ref" dir="auto"></span>
+                  <div class="ptitle">
+                    <h1 id="project-title" dir="auto"></h1>
+                    <span id="project-status"></span>
+                  </div>
+                  <p id="project-description" dir="auto"></p>
+                </div>
+                <div class="actions">
                   <button
-                    class="button small"
-                    id="fit"
-                    title="Fit all timelines and align points by date"
+                    class="button"
+                    id="project-info-toggle"
+                    type="button"
+                    aria-controls="project-info"
+                    aria-expanded="false"
                   >
-                    Fit all
+                    Project info
                   </button>
-                  <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
-                </div>
-                <div class="keys">
-                  <span id="task-count"></span>
-                  <span><i class="key-fact"></i>Recorded event</span>
-                  <span><i class="key-open"></i>Action needed</span>
-                  <span><i class="key-done"></i>Completed action</span>
+                  <button class="button primary" id="add-task">+ Add task</button>
                 </div>
               </div>
-              <div class="timeline-viewport" id="viewport">
-                <div class="timeline-content" id="timeline-content"></div>
-              </div>
-              <div class="tl-foot">
-                <span
-                  >Drag points to arrange · Drag from + to connect · Tidy layout resets each
-                  task</span
-                >
-                <span>Ctrl+Z to undo · Changes are saved in this browser</span>
-              </div>
-            </section>
-            <aside class="project-info" id="project-info" aria-label="Project information">
-              <div class="project-info-head">
+              <section class="timeline" aria-label="Task timelines">
+                <div class="tl-tools">
+                  <div class="tl-buttons">
+                    <button class="button small" id="undo" aria-label="Undo last change">
+                      ↶ Undo
+                    </button>
+                    <button class="button small" id="redo" aria-label="Redo last change">
+                      ↷ Redo
+                    </button>
+                    <button
+                      class="button small"
+                      id="fit"
+                      title="Fit all timelines and align points by date"
+                    >
+                      Fit all
+                    </button>
+                    <button class="button small" id="pan" aria-pressed="false">Hand tool</button>
+                  </div>
+                  <div class="keys">
+                    <span id="task-count"></span>
+                    <span><i class="key-fact"></i>Recorded event</span>
+                    <span><i class="key-open"></i>Action needed</span>
+                    <span><i class="key-done"></i>Completed action</span>
+                  </div>
+                </div>
+                <div class="timeline-viewport" id="viewport">
+                  <div class="timeline-content" id="timeline-content"></div>
+                </div>
+                <div class="tl-foot">
+                  <span
+                    >Drag points to arrange · Drag from + to connect · Tidy layout resets each
+                    task</span
+                  >
+                  <span>Ctrl+Z to undo · Changes are saved in this browser</span>
+                </div>
+              </section>
+            </div>
+            <aside
+              class="context-info project-info"
+              id="project-info"
+              aria-label="Project information"
+            >
+              <div class="context-info-head">
                 <div>
                   <span class="label">PROJECT</span>
                   <h2>Project information</h2>
                 </div>
                 <button
-                  class="icon-button"
+                  class="icon-button context-info-close"
                   id="project-info-close"
                   type="button"
                   aria-label="Close project information"
@@ -252,13 +292,6 @@
               </button>
               <div class="tblock" id="overview" aria-label="Commercial summary"></div>
               <div class="below">
-                <section class="panel" aria-labelledby="next-heading">
-                  <div class="panel-head">
-                    <h2 id="next-heading">Next actions</h2>
-                    <span class="muted" id="next-count"></span>
-                  </div>
-                  <div class="next" id="next-actions"></div>
-                </section>
                 <section class="panel" aria-labelledby="terms-heading">
                   <div class="panel-head">
                     <h2 id="terms-heading">Payment terms</h2>
@@ -266,11 +299,18 @@
                   </div>
                   <div class="terms" id="terms-panel"></div>
                 </section>
+                <section class="panel" aria-labelledby="next-heading">
+                  <div class="panel-head">
+                    <h2 id="next-heading">Next actions</h2>
+                    <span class="muted" id="next-count"></span>
+                  </div>
+                  <div class="next" id="next-actions"></div>
+                </section>
               </div>
             </aside>
           </div>
           <button
-            class="project-info-scrim"
+            class="context-info-scrim"
             id="project-info-scrim"
             type="button"
             aria-label="Close project information"
@@ -419,6 +459,10 @@
         <label
           >Short description<input id="project-summary-input" maxlength="180" dir="auto"
         /></label>
+        <div class="field-grid identity-grid">
+          <label>Project number<input id="project-number" maxlength="80" dir="auto" /></label>
+          <label>Contractor<input id="project-contractor" maxlength="120" dir="auto" /></label>
+        </div>
         <label>Customer<input id="project-customer" maxlength="120" dir="auto" /></label>
         <label
           >Scope of supply<textarea

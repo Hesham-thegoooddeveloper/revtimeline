@@ -1,5 +1,12 @@
 # Change log
 
+## Right information panel and project identity — 10 October 2026
+
+- Reclaim the largely unused left rail and move calendar, colour mode and account controls into the header.
+- Keep project value, project number, customer, contractor, scope and payment terms visible in a right information panel on wide screens, with a right drawer on smaller screens.
+- Add editable project number and contractor fields to existing workspace records and include them in Excel exports without changing the database schema.
+- Put total project count, grouped project value and the next open actions in the All tasks information panel.
+
 ## Search, project information and Excel export — 10 October 2026
 
 - Put the new task field above the All tasks and project tabs.
