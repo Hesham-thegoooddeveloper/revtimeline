@@ -73,11 +73,16 @@ test('invalid chronology rejects the whole update, including proposed shifts', (
   assert(updateEvent(t, 'review', { done: true, actual: '2026-10-07' }).error);
   assert.deepEqual(t, before);
 });
-test('same-path overlaps reject changes while parallel same-day events are valid', () => {
-  const t = { events: [fact('a', '2026-10-08'), fact('b', '2026-10-10')], edges: [] },
-    before = structuredClone(t);
-  assert(updateEvent(t, 'b', { occurred: '2026-10-08' }).error);
-  assert.deepEqual(t, before);
+test('connected and parallel activities may share a day without shifting dates', () => {
+  const t = {
+    events: [fact('a', '2026-10-08'), fact('b', '2026-10-10')],
+    edges: [['a', 'b']],
+  };
+  assert.deepEqual(updateEvent(t, 'b', { occurred: '2026-10-08' }), {
+    delta: -2,
+    shifted: 0,
+  });
+  assert.deepEqual(t.events.map(visibleDate), ['2026-10-08', '2026-10-08']);
   const parallel = {
     events: [fact('a', '2026-10-08'), fact('b', '2026-10-08', 1)],
     edges: [['a', 'b']],

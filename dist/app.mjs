@@ -10,7 +10,7 @@ import {
   checkData,
   projectTotals,
   termsPercent,
-} from './model.mjs';
+} from './model.mjs?v=2026-10-10-sameday-layout';
 import { sample } from './sample.mjs';
 import {
   openActions,
@@ -18,11 +18,12 @@ import {
   projectStatus,
   contractValue,
   historyCounts,
-} from './portfolio.mjs';
+} from './portfolio.mjs?v=2026-10-10-sameday-layout';
 import { createAccount } from './account.mjs';
 import { createSync } from './sync.mjs';
-import { createExcelFile } from './excel.mjs';
+import { createExcelFile } from './excel.mjs?v=2026-10-10-sameday-layout';
 import { siteMarkup, friendlyError } from './site.mjs';
+import { timelineLayout } from './timeline-layout.mjs';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
   key = 'trackflow-prototype-v1',
@@ -276,33 +277,17 @@ function restore(kind) {
   toast(kind === 'undo' ? 'Last action undone' : 'Action redone');
 }
 function bounds(t, width, surface, fixedZoom = null) {
-  const dates = t.events.map((e) => day(visibleDate(e))),
-    start = dates.length ? Math.min(...dates) : day(today()),
-    end = dates.length ? Math.max(...dates) : start + 14,
-    zoom = fixedZoom ?? viewZoom[surface + ':' + t.id] ?? 1,
-    pad = 78,
-    span = Math.max(1, end - start),
-    fitScale = Math.max(0.001, (width - pad * 2) / span),
-    scale = fitScale * zoom,
-    canvasWidth = Math.max(width, pad * 2 + span * scale);
-  return {
-    start,
-    end,
-    width: canvasWidth,
-    scale,
-    pad,
-    zoom,
-    x: (s) => pad + (day(s) - start) * scale,
-  };
+  return timelineLayout(t, width, fixedZoom ?? viewZoom[surface + ':' + t.id] ?? 1);
 }
 function placeAfterSource(t, source, event, surface) {
+  if (visibleDate(source) === visibleDate(event)) return;
   const width =
       surface === 'modal'
         ? Math.max(300, $('task-dialog').clientWidth - 48)
         : Math.max(240, $('viewport').clientWidth - 36),
     b = bounds(t, width, surface, 1),
-    sourceX = Math.max(78, b.x(visibleDate(source)) + (source.layout?.dx || 0)),
-    naturalX = b.x(visibleDate(event));
+    sourceX = b.nodes.get(source.id).x,
+    naturalX = b.nodes.get(event.id).x;
   // A newly connected event gets a readable gap without changing either date.
   event.layout = {
     dx: Math.round(Math.max(-5000, Math.min(5000, sourceX + 180 - naturalX))),
@@ -316,11 +301,26 @@ function revealNewEvent(tid, eid, surface) {
     node = geometry.get(surface + ':' + tid)?.nodes.get(eid);
   if (!scroll || !node) return;
   scroll.scrollLeft = Math.max(0, node.x - scroll.clientWidth + 180);
+  if (surface === 'modal') {
+    scroll.scrollTop = Math.max(0, node.y - scroll.clientHeight + 110);
+  } else {
+    const y = scroll.getBoundingClientRect().top + node.y;
+    if (y > innerHeight - 110) window.scrollBy({ top: y - innerHeight + 110, behavior: 'smooth' });
+    else if (y < 110) window.scrollBy({ top: y - 110, behavior: 'smooth' });
+  }
 }
 function icon(name) {
   return { expand: '⛶', fit: '↔', plus: '＋', minus: '−' }[name];
 }
 function edgeGeometry(n, m) {
+  if (Math.abs(m.x - n.x) < 36) {
+    const outerX = Math.max(n.x, m.x) + 94;
+    return {
+      path: `M ${n.x + 9} ${n.y} C ${outerX} ${n.y}, ${outerX} ${m.y}, ${m.x + 9} ${m.y}`,
+      mx: outerX,
+      my: (n.y + m.y) / 2,
+    };
+  }
   const ax = n.x + 9,
     cx = m.x - 9,
     mid = (ax + cx) / 2;
@@ -332,49 +332,9 @@ function edgeGeometry(n, m) {
 }
 function taskMarkup(t, width, surface = 'main') {
   const b = bounds(t, Math.max(240, width), surface),
-    lanes = [...new Set(t.events.map((e) => e.lane))].sort((a, b) => a - b),
     terms = searchTerms(),
-    nodes = new Map();
-  let y = 0;
-  for (const lane of lanes) {
-    const list = t.events
-        .filter((e) => e.lane === lane)
-        .sort((a, c) => day(visibleDate(a)) - day(visibleDate(c))),
-      last = [];
-    for (const e of list) {
-      const x = b.x(visibleDate(e)),
-        left = x - 70;
-      let tier = last.findIndex((r) => r < left - 10);
-      if (tier < 0) tier = last.length;
-      last[tier] = x + 70;
-      nodes.set(e.id, { x, labelY: y + 16 + tier * 52 });
-    }
-    const nodeY = y + Math.max(1, last.length) * 52 + 38,
-      nodeTracks = [];
-    for (const e of list) {
-      const n = nodes.get(e.id);
-      let track = nodeTracks.findIndex((r) => r < n.x - 32);
-      if (track < 0) track = nodeTracks.length;
-      nodeTracks[track] = n.x + 32;
-      n.y = nodeY + track * 46;
-    }
-    y = nodeY + Math.max(0, nodeTracks.length - 1) * 46 + 52;
-  }
-  for (const e of t.events) {
-    const n = nodes.get(e.id),
-      offset = e.layout || { dx: 0, dy: 0 },
-      dx = Math.max(78 - n.x, offset.dx),
-      dy = Math.max(8 - n.labelY, offset.dy);
-    n.x += dx;
-    n.y += dy;
-    n.labelY += dy;
-  }
-  const height = Math.max(172, y + 12, ...[...nodes.values()].map((n) => n.y + 52)),
-    canvasWidth = Math.max(
-      b.width,
-      ...t.events.map((e) => nodes.get(e.id).x + (e.layout ? 180 : 90)),
-    );
-  geometry.set(surface + ':' + t.id, { ...b, nodes });
+    nodes = b.nodes;
+  geometry.set(surface + ':' + t.id, b);
   let svg = `<defs><marker id="arrow-${surface}-${t.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
   for (let i = 0; i < t.edges.length; i++) {
     const [a, c, reverse] = t.edges[i],
@@ -396,7 +356,7 @@ function taskMarkup(t, width, surface = 'main') {
     svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="2"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : 'Action needed'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
-    ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${canvasWidth}" height="${height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
+    ? `<svg class="task-canvas" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
     : `<div class="empty-task">No events yet. <button class="button" data-first="${t.id}">＋ Add first event</button></div>`;
   return `<div class="task-workspace" data-workspace="${t.id}"><div class="task-scroll ${panning ? 'panning' : ''}" data-scroll="${t.id}" data-surface="${surface}">${canvas}</div><div class="task-bottom"><span class="task-span">${t.events.length ? shortDate(iso(b.start)) + ' – ' + shortDate(iso(b.end)) : ''}</span><div class="task-zoom"><button class="button small" data-tidy="${t.id}" aria-label="Reset ${esc(t.name)} point layout">Tidy layout</button><button class="icon-button" data-zoom="out" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom out ${esc(t.name)}">${icon('minus')}</button><span>${Math.round(b.zoom * 100)}%</span><button class="icon-button" data-zoom="in" data-task="${t.id}" data-surface="${surface}" aria-label="Zoom in ${esc(t.name)}">${icon('plus')}</button><button class="icon-button" data-fit="${t.id}" data-surface="${surface}" aria-label="Fit and align ${esc(t.name)} timeline" title="Fit and align points by date">${icon('fit')}</button>${surface === 'main' ? `<button class="icon-button" data-expand="${t.id}" aria-label="Open ${esc(t.name)} in a larger window">${icon('expand')}</button>` : ''}</div></div></div>`;
 }
@@ -1240,13 +1200,15 @@ function insert(tid, index, anchor) {
     to = t.events.find((e) => e.id === b),
     start = day(visibleDate(from)),
     end = day(visibleDate(to));
-  if (end - start < 2) {
-    toast(
-      'There is no free day between these events. Add a parallel branch or adjust the dates first.',
-    );
-    return;
-  }
-  openEditor(tid, null, a, false, anchor, iso(Math.floor((start + end) / 2)), b);
+  openEditor(
+    tid,
+    null,
+    a,
+    false,
+    anchor,
+    iso(end - start < 2 ? start : Math.floor((start + end) / 2)),
+    b,
+  );
 }
 function openConnection(tid, index) {
   connection = { tid, index };
@@ -1608,9 +1570,7 @@ window.addEventListener('pointerup', (e) => {
     } else {
       const b = geometry.get(d.surface + ':' + d.tid),
         r = d.svg.getBoundingClientRect(),
-        date = d.moved
-          ? iso(b.start + Math.round((e.clientX - r.left - b.pad) / b.scale))
-          : iso(day(visibleDate(from)) + 1),
+        date = d.moved ? iso(b.dateAt(e.clientX - r.left)) : iso(day(visibleDate(from)) + 1),
         branch = d.moved && Math.abs(e.clientY - d.startY) > 40;
       openEditor(d.tid, null, d.from, branch, d.port, date);
     }

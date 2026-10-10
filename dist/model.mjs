@@ -137,13 +137,6 @@ export function validateTask(task) {
     if (x && y && day(visibleDate(x)) > day(visibleDate(y)))
       return `${label(y)} would come before ${label(x)}, which leads to it. The dates were not changed.`;
   }
-  const slots = new Map();
-  for (const e of task.events) {
-    const slot = `${e.lane}:${visibleDate(e)}`;
-    if (slots.has(slot))
-      return `${label(slots.get(slot))} and ${label(e)} would overlap on the same path. Choose another date or create a parallel branch.`;
-    slots.set(slot, e);
-  }
   return null;
 }
 export function updateEvent(task, id, values) {
