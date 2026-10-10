@@ -1,5 +1,14 @@
 # Change log
 
+## Task interaction refinements — 10 October 2026
+
+- Add a top task field with project selection. New tasks appear first instead of being appended to the end of the project view.
+- Edit task names and descriptions from each task row.
+- Show the number of days between connected activities on hover, identifying scheduled intervals when an action is unfinished.
+- Keep connection lines, insertion controls and add ports attached to points while dragging. Add a visible landing placeholder when reordering tasks.
+- Let users drag the event form by its heading and scroll inside it on short screens. Remove the accent border that appeared on task hover.
+- Fit restores automatic date-based spacing as well as zoom; point moves remain visual and never edit dates.
+
 ## Prepared reliability fixes — 10 October 2026
 
 These changes are on a review branch and have not been published.

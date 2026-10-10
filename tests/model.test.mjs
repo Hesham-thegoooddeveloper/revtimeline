@@ -233,6 +233,11 @@ test('saved and imported data must have a valid structure and safe IDs', () => {
   assert.equal(checkData(positioned), null);
   positioned.projects[0].tasks[0].events[0].layout.dx = Infinity;
   assert.match(checkData(positioned), /invalid details or dates/);
+  const describedTask = migrate(structuredClone(sample));
+  describedTask.projects[0].tasks[0].description = 'Review the drawings';
+  assert.equal(checkData(describedTask), null);
+  describedTask.projects[0].tasks[0].description = 42;
+  assert.match(checkData(describedTask), /invalid name or ID/);
   assert.match(checkData({ schemaVersion: SCHEMA_VERSION + 1, projects: [{}] }), /newer version/);
 });
 test('projects without commercial details remain valid', () => {

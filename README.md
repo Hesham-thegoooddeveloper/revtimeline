@@ -18,7 +18,10 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 - Keep several open tabs in sync with each other.
 - View each task from its own start, automatically fitted to its available width.
 - Reorder tasks within a project by dragging their handles or using the up and down buttons.
+- Add a task from the top of the workspace while choosing its project. New tasks appear first, with room below them. Edit a task's name and description from its row.
 - Drag activity points freely on a task timeline without changing their dates; use Tidy layout to reset that task's points to their date-based positions.
+- Watch connections follow a point while dragging. Hover a connection to see the elapsed or scheduled number of days between its activities. Fit also restores automatic date-based spacing.
+- Move an open event form by dragging its heading; on shorter screens, scroll within the form to reach its actions.
 - Inspect full event details on hover and edit through a popup.
 - Insert an event between connected events, create branches and merge paths.
 - Track occurrence dates for recorded events and trigger, due and completion dates for actions.
