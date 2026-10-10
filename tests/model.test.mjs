@@ -244,6 +244,21 @@ test('adding before an event preserves all incoming paths and existing dates', (
     '2026-10-10',
   ]);
 });
+test('adding before a same-day predecessor keeps its date and starts another incoming path', () => {
+  const t = {
+    events: [fact('existing', '2026-10-10'), fact('target', '2026-10-10')],
+    edges: [['existing', 'target']],
+  };
+  t.events.push(fact('before', '2026-10-09'));
+  assert.equal(connectBefore(t, 'before', 'target'), 'parallel');
+  assert.deepEqual(t.edges, [
+    ['existing', 'target'],
+    ['before', 'target'],
+  ]);
+  assert.equal(t.events.find((event) => event.id === 'target').occurred, '2026-10-10');
+  assert.ok(t.events.find((event) => event.id === 'before').lane > 0);
+  assert.equal(validateTask(t), null);
+});
 test('validation errors name the event that is invalid', () => {
   const t = task();
   t.events[0] = { ...t.events[0], description: 'Legacy record', actual: null, occurred: null };

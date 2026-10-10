@@ -11,7 +11,7 @@ import {
   checkData,
   projectTotals,
   termsPercent,
-} from './model.mjs?v=2026-10-10-workflow-refresh';
+} from './model.mjs?v=2026-10-10-date-picker';
 import { sample } from './sample.mjs';
 import {
   openActions,
@@ -19,21 +19,20 @@ import {
   projectStatus,
   contractValue,
   historyCounts,
-} from './portfolio.mjs?v=2026-10-10-workflow-refresh';
+} from './portfolio.mjs?v=2026-10-10-date-picker';
 import { createAccount } from './account.mjs';
 import { createSync } from './sync.mjs';
-import { createExcelFile } from './excel.mjs?v=2026-10-10-workflow-refresh';
+import { createExcelFile } from './excel.mjs?v=2026-10-10-date-picker';
 import { siteMarkup, friendlyError } from './site.mjs';
-import {
-  timelineLayout,
-  fitTimelineZoom,
-} from './timeline-layout.mjs?v=2026-10-10-workflow-refresh';
+import { timelineLayout, fitTimelineZoom } from './timeline-layout.mjs?v=2026-10-10-date-picker';
+import { enhanceDateInput } from './date-picker.mjs?v=2026-10-10-date-picker';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
   key = 'trackflow-prototype-v1',
   GUEST_KEY = 'trackflow-guest',
   // Backups exported before the rename are labelled TrackFlow.
   BACKUP_APPS = ['RevTimeline', 'TrackFlow'];
+[$('event-date'), $('event-trigger'), $('event-due'), $('calendar-date')].forEach(enhanceDateInput);
 function uid() {
   if (crypto.randomUUID) return crypto.randomUUID();
   // randomUUID needs a secure context (HTTPS or localhost); getRandomValues does not.
@@ -357,7 +356,7 @@ function taskMarkup(t, width, surface = 'main') {
       // Arabic labels start at the right edge of their box and run leftward.
       labelAt = isRtl(e.description) ? `direction="rtl" x="${n.x + 62}"` : `x="${n.x - 62}"`,
       matched = terms.length && eventMatches(e, terms);
-    svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="8"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : e.scheduled ? 'Action needed' : 'Action · no target'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add or branch from ${esc(e.description)}"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
+    svg += `<g class="node${matched ? ' search-match' : ''}" data-event="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="${esc(e.description)}, ${dateLabel(visibleDate(e))}"><rect class="label-box ${e.kind}" x="${n.x - 70}" y="${n.labelY - 4}" width="140" height="43" rx="8"/><text class="event-label" ${labelAt} y="${n.labelY + 12}">${esc(short)}</text><text class="event-kind" x="${n.x - 62}" y="${n.labelY + 29}">${e.kind === 'fact' ? 'Recorded event' : e.done ? 'Completed action' : e.scheduled ? 'Action needed' : 'Action · no target'}</text><line class="stem" x1="${n.x}" x2="${n.x}" y1="${n.labelY + 39}" y2="${n.y - 12}"/><circle class="hit" cx="${n.x}" cy="${n.y}" r="20"/><circle class="event-circle ${e.kind} ${e.done ? 'done' : 'open'}" cx="${n.x}" cy="${n.y}" r="8"/>${e.done ? `<path class="tick" d="M ${n.x - 3} ${n.y} l 2 2 l 4 -4"/>` : ''}<text class="event-date" x="${n.x}" y="${n.y + 27}" text-anchor="middle">${shortDate(visibleDate(e))}</text></g><g class="before-port" data-before="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add before ${esc(e.description)}" title="Add before"><circle class="hit" cx="${n.x - 26}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x - 26}" cy="${n.y}" r="7"/><text class="add-plus" x="${n.x - 26}" y="${n.y + 3.5}" text-anchor="middle" style="font-size:11px">+</text></g><g class="port" data-port="${e.id}" data-task="${t.id}" tabindex="0" role="button" aria-label="Add after or branch from ${esc(e.description)}" title="Add after"><circle class="hit" cx="${n.x + 25}" cy="${n.y}" r="13"/><circle class="add-ring" cx="${n.x + 25}" cy="${n.y}" r="6"/><text class="add-plus" x="${n.x + 25}" y="${n.y + 3}" text-anchor="middle" style="font-size:11px">+</text></g>`;
   }
   const canvas = t.events.length
     ? `<svg class="task-canvas${b.zoom < 0.75 ? ' compact' : ''}" data-canvas="${t.id}" data-surface="${surface}" width="${b.width}" height="${b.height}" role="group" aria-label="${esc(t.name)} timeline">${svg}</svg>`
@@ -953,6 +952,8 @@ function openEditor(
   $('event-date').value = e ? visibleDate(e) : suggested || today();
   $('event-trigger').value = e?.triggered || suggested || today();
   $('event-due').value = e?.scheduled || suggested || today();
+  for (const id of ['event-date', 'event-trigger', 'event-due'])
+    $(id).dispatchEvent(new Event('input', { bubbles: true }));
   $('event-has-target').checked = !!e?.scheduled;
   $('event-plan').value = e?.planned || '';
   $('plan-field').hidden = !e || e.kind === 'fact';
@@ -963,18 +964,10 @@ function openEditor(
   $('add-sequence-from-event').hidden = !e;
   $('event-position').hidden = !to || !!e;
   if (to && !e) {
-    const target = t.events.find((item) => item.id === to),
-      predecessors = t.edges
-        .filter((edge) => edge[1] === to)
-        .map((edge) => t.events.find((item) => item.id === edge[0])),
-      earliest = predecessors.length
-        ? iso(Math.max(...predecessors.map((item) => day(visibleDate(item)))))
-        : null;
+    const target = t.events.find((item) => item.id === to);
     $('event-position').textContent = from
       ? `Inserting between connected activities. Choose ${dateLabel(visibleDate(t.events.find((item) => item.id === from)))} through ${dateLabel(visibleDate(target))}, including either day.`
-      : earliest
-        ? `Adding before “${target.description}”. Choose ${dateLabel(earliest)} through ${dateLabel(visibleDate(target))}, including either day.`
-        : `Adding before “${target.description}” (${dateLabel(visibleDate(target))}). Choose the same day or an earlier date.`;
+      : `Adding before “${target.description}” (${dateLabel(visibleDate(target))}). Its date stays unchanged. Choose an earlier or the same day; if earlier than an existing predecessor, this activity starts another incoming path.`;
   }
   $('event-warning').hidden = true;
   syncEditor();
@@ -1028,7 +1021,10 @@ function closeEditor() {
 $('event-kind').onchange = syncEditor;
 $('event-has-target').onchange = syncEditor;
 $('event-done').onchange = () => {
-  if ($('event-done').checked) $('event-date').value = today();
+  if ($('event-done').checked) {
+    $('event-date').value = today();
+    $('event-date').dispatchEvent(new Event('input', { bubbles: true }));
+  }
   syncEditor();
 };
 $('event-form').onsubmit = (ev) => {
@@ -1119,15 +1115,12 @@ $('close-editor').onclick = closeEditor;
 $('editor-backdrop').onclick = closeEditor;
 $('add-before-event').onclick = () => {
   const { tid, eid } = editing;
-  const task = taskBy(tid),
-    target = task.events.find((event) => event.id === eid),
-    predecessors = task.edges
-      .filter((edge) => edge[1] === eid)
-      .map((edge) => task.events.find((event) => event.id === edge[0])),
-    earliest = Math.max(-Infinity, ...predecessors.map((event) => day(visibleDate(event)))),
-    suggested = iso(Math.max(day(visibleDate(target)) - 1, earliest));
-  openEditor(tid, null, null, false, $('add-before-event'), suggested, eid);
+  openBefore(tid, eid, $('add-before-event'));
 };
+function openBefore(tid, eid, anchor) {
+  const target = taskBy(tid).events.find((event) => event.id === eid);
+  openEditor(tid, null, null, false, anchor, iso(day(visibleDate(target)) - 1), eid);
+}
 let batchTaskId = null;
 function syncBatchRow(row) {
   const action = row.querySelector('.batch-type').value === 'action',
@@ -1156,6 +1149,7 @@ function appendBatchRow(date) {
     );
   };
   $('batch-rows').append(row);
+  row.querySelectorAll('input[type="date"]').forEach(enhanceDateInput);
   row.querySelector('.batch-number').textContent = $('batch-rows').children.length;
   syncBatchRow(row);
   return row;
@@ -1397,7 +1391,7 @@ function openConnection(tid, index) {
 }
 function handleClick(e) {
   const target = e.target.closest(
-    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-tidy],[data-move-task],[data-edit-task],[data-add-sequence]',
+    '[data-first],[data-zoom],[data-fit],[data-expand],[data-between],[data-edge],[data-event],[data-before],[data-tidy],[data-move-task],[data-edit-task],[data-add-sequence]',
   );
   if (!target || drag) return;
   if (target.dataset.addSequence) openBatch(target.dataset.addSequence);
@@ -1409,6 +1403,7 @@ function handleClick(e) {
       for (const event of taskBy(target.dataset.tidy).events) delete event.layout;
     });
   else if (target.dataset.first) openEditor(target.dataset.first);
+  else if (target.dataset.before) openBefore(target.dataset.task, target.dataset.before, target);
   else if (target.dataset.zoom) {
     const k = target.dataset.surface + ':' + target.dataset.task;
     viewZoom[k] = Math.min(
@@ -1498,7 +1493,10 @@ for (const container of [$('timeline-content'), $('task-dialog-content')]) {
   container.addEventListener(
     'click',
     (e) => {
-      if (performance.now() >= suppressClickUntil || !e.target.closest('[data-event],[data-port]'))
+      if (
+        performance.now() >= suppressClickUntil ||
+        !e.target.closest('[data-event],[data-port],[data-before]')
+      )
         return;
       suppressClickUntil = 0;
       e.stopPropagation();
@@ -1652,6 +1650,7 @@ function beginDrag(e) {
       moved: false,
       node,
       port: svg.querySelector(`[data-port="${node.dataset.event}"]`),
+      beforePort: svg.querySelector(`[data-before="${node.dataset.event}"]`),
       svg,
       baseWidth: Number(svg.getAttribute('width')),
       baseHeight: Number(svg.getAttribute('height')),
@@ -1690,6 +1689,7 @@ function previewPointMove(d, rawX, rawY, clientX, clientY) {
   d.deltaY = dy;
   d.node.setAttribute('transform', `translate(${dx},${dy})`);
   d.port?.setAttribute('transform', `translate(${dx},${dy})`);
+  d.beforePort?.setAttribute('transform', `translate(${dx},${dy})`);
   for (let i = 0; i < t.edges.length; i++) {
     const [a, b] = t.edges[i];
     if (a !== d.eid && b !== d.eid) continue;
@@ -1868,14 +1868,18 @@ function showCalendar() {
 }
 $('calendar-nav').onclick = () => {
   $('calendar-date').value = today();
+  $('calendar-date').dispatchEvent(new Event('input', { bubbles: true }));
   showCalendar();
   $('calendar-dialog').showModal();
 };
-$('calendar-date').onchange = showCalendar;
+$('calendar-date').onchange = () => {
+  if ($('calendar-date').checkValidity()) showCalendar();
+};
 $('calendar-grid').onclick = (event) => {
   const button = event.target.closest('[data-calendar-day]');
   if (!button) return;
   $('calendar-date').value = button.dataset.calendarDay;
+  $('calendar-date').dispatchEvent(new Event('input', { bubbles: true }));
   showCalendar();
 };
 $('calendar-results').onclick = (event) => {
@@ -1899,13 +1903,17 @@ for (const [id, change] of [
   ['calendar-next', 1],
 ])
   $(id).onclick = () => {
-    const selected = $('calendar-date').value || today(),
+    const selected = $('calendar-date').checkValidity()
+        ? $('calendar-date').value || today()
+        : today(),
       month = new Date(Date.UTC(+selected.slice(0, 4), +selected.slice(5, 7) - 1 + change, 1));
     $('calendar-date').value = month.toISOString().slice(0, 10);
+    $('calendar-date').dispatchEvent(new Event('input', { bubbles: true }));
     showCalendar();
   };
 $('calendar-today').onclick = () => {
   $('calendar-date').value = today();
+  $('calendar-date').dispatchEvent(new Event('input', { bubbles: true }));
   showCalendar();
 };
 $('close-calendar').onclick = () => $('calendar-dialog').close();

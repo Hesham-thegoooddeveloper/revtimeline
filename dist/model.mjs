@@ -185,8 +185,20 @@ export function canConnect(task, from, to) {
   return true;
 }
 export function connectBefore(task, newId, targetId) {
-  for (const edge of task.edges) if (edge[1] === targetId) edge[1] = newId;
+  const added = task.events.find((event) => event.id === newId);
+  const incoming = task.edges.filter((edge) => edge[1] === targetId);
+  const fitsPath = incoming.every((edge) => {
+    const predecessor = task.events.find((event) => event.id === edge[0]);
+    return day(visibleDate(predecessor)) <= day(visibleDate(added));
+  });
+  if (fitsPath) {
+    for (const edge of incoming) edge[1] = newId;
+  } else {
+    // Earlier history is another incoming path; existing connections and dates stay intact.
+    added.lane = Math.max(0, ...task.events.map((event) => event.lane)) + 1;
+  }
   task.edges.push([newId, targetId]);
+  return fitsPath ? 'inserted' : 'parallel';
 }
 export function removeEvent(task, id) {
   task.events = task.events.filter((e) => e.id !== id);

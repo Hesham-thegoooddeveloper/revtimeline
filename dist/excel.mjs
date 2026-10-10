@@ -1,4 +1,4 @@
-import { projectTotals, visibleDate } from './model.mjs?v=2026-10-10-workflow-refresh';
+import { projectTotals, visibleDate } from './model.mjs?v=2026-10-10-date-picker';
 
 const encoder = new TextEncoder();
 const xml = (value) =>

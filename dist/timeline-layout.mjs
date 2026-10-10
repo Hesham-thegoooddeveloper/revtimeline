@@ -1,4 +1,4 @@
-import { day, visibleDate } from './model.mjs?v=2026-10-10-workflow-refresh';
+import { day, visibleDate } from './model.mjs?v=2026-10-10-date-picker';
 
 const PAD = 78;
 const MIN_GAP = 184;

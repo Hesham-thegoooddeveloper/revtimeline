@@ -1,5 +1,11 @@
 # Change log
 
+## Clearer date picking and add-before paths — 10 October 2026
+
+- Replace the browser date popup in activity forms and the calendar jump field with a consistent month picker; dates can also be entered as `YYYY-MM-DD`.
+- Show a + control before each timeline activity alongside the existing add-after control.
+- Default an activity added before another to the prior day. When that date is earlier than an existing predecessor, preserve existing dates and connections and add a separate incoming path.
+
 ## Add-before activity and clearer date rules — 10 October 2026
 
 - Add an activity before an existing one from its editor, keeping current activity dates and connections in order.
