@@ -1,4 +1,4 @@
-import { day, visibleDate } from './model.mjs?v=2026-10-10-date-picker';
+import { day, visibleDate } from './model.mjs?v=2026-10-10-flexible-dates';
 
 const PAD = 78;
 const MIN_GAP = 184;

@@ -10,13 +10,13 @@ Project → continuous task → events and connections. Submission, feedback and
 - Action: something needs doing; it has a trigger date, an optional current target date, an original target date when one has been set, and an actual completion date when done.
 - One visible timeline: recorded events use occurrence date, unfinished actions use their target date or trigger date when no target is set, and completed actions use actual completion date.
 
-## Date shifts and validation
+## Date entry and validation
 
-A visible-date change is measured against the previous visible date, not the original plan. Unfinished actions whose visible dates are on or after that previous date shift their trigger dates and any target dates by that exact difference, including upcoming actions on branches. Original target dates and other completed records remain unchanged. Description-only edits cause no shift.
+A date edit changes only the selected activity. Its original target date remains recorded, and all other activities keep their dates. Connections describe relationships independently of dates.
 
-Dates must be real Gregorian calendar dates. A connected successor may share its predecessor's date but may not be earlier. An action's target or completion date cannot precede its trigger date. Actions without a target date stay open but are not overdue or due soon. Apply changes on a trial copy; reject the entire operation if it violates these rules. Do not silently repair history or partially apply a rejected shift.
+Dates must be real Gregorian calendar dates. Connected activities may have dates in any order, including the same day; action target and completion dates may also differ in either direction from the trigger. Actions without a target date stay open but are not overdue or due soon. Reject only missing or invalid dates, without changing other records.
 
-Connections cannot form loops. Reversing a displayed arrow changes relationship direction without changing dates or the structural order used in chronology validation.
+Connections cannot form loops. Reversing a displayed arrow changes relationship direction without changing dates.
 
 ## Current experience
 
@@ -38,7 +38,7 @@ A task can be added from the top of the workspace with an explicit project choic
 
 Descriptions appear above the lines. Full details appear on hover and keyboard focus. Clicking opens an editor. Plus controls between nodes insert events; small node ports currently support adding, branching and merging. The latest request to remove most node-plus controls remains pending.
 
-The event editor identifies its project and task, uses visual cards for recorded events and actions, and has a collapsible Date rules explanation. It opens near the top of the viewport, scrolls inside itself, and can still be dragged. Activity dates use a consistent in-app month picker or typed `YYYY-MM-DD` values. A + handle to the left of each activity opens Add before, defaulting to one day before the selected activity. Saving preserves all existing activity dates. When the new date fits after every incoming predecessor, the new activity is inserted into those connections. Otherwise it creates a separate incoming path without changing existing connections. A task-level Add several flow can collect a connected sequence of recorded events and actions, including untargeted actions, and save all of them in one atomic operation. A connection dialog lets the user reverse or delete a connection; the right point handle can create a replacement connection.
+The event editor identifies its project and task, uses visual cards for recorded events and actions, and has a collapsible How dates work explanation. It opens near the top of the viewport, scrolls inside itself, and can still be dragged. Activity dates use a consistent in-app month picker or typed `YYYY-MM-DD` values. A + handle to the left of each activity opens Add before, defaulting to one day before the selected activity. Saving inserts it before that activity in the connection graph without changing existing dates. A task-level Add several flow can collect recorded events and actions, including untargeted actions, and save all of them in one atomic operation. By default, the new activities connect by their dates around the selected activity; the user can choose entered-order connections instead, regardless of dates. A connection dialog lets the user reverse or delete a connection; the right point handle can create a replacement connection.
 
 My calendar is an optional month view across projects, with activity markers, month navigation, a date picker and selected-day details. Selecting an activity opens it in its project. It is separate from the default timeline overview.
 

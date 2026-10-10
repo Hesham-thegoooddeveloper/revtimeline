@@ -125,18 +125,14 @@ export function checkData(data) {
 }
 export function validateTask(task) {
   for (const e of task.events) {
-    const d = visibleDate(e);
-    if (!d || !Number.isFinite(day(d)))
-      return `${label(e)} has no valid date. Open it and enter one.`;
-    if (e.kind === 'action' && e.triggered && day(d) < day(e.triggered))
-      return `${label(e)} would be due or completed before its trigger date. The dates were not changed.`;
-  }
-  const map = new Map(task.events.map((e) => [e.id, e]));
-  for (const [a, b] of task.edges) {
-    const x = map.get(a),
-      y = map.get(b);
-    if (x && y && day(visibleDate(x)) > day(visibleDate(y)))
-      return `${label(y)} would come before ${label(x)}, which leads to it. The dates were not changed.`;
+    if (
+      !validDate(visibleDate(e)) ||
+      (e.kind === 'action' && !validDate(e.triggered)) ||
+      ['occurred', 'triggered', 'planned', 'scheduled', 'actual'].some(
+        (field) => e[field] != null && !validDate(e[field]),
+      )
+    )
+      return `${label(e)} needs a real calendar date. Check its date fields and try again.`;
   }
   return null;
 }
@@ -150,26 +146,11 @@ export function updateEvent(task, id, values) {
     next.actual = next.occurred;
   } else if (!next.done) next.actual = null;
   const delta = day(visibleDate(next)) - old;
-  let shifted = 0;
-  if (delta) {
-    for (const other of trial.events) {
-      if (
-        other.id !== id &&
-        other.kind === 'action' &&
-        !other.done &&
-        day(visibleDate(other)) >= old
-      ) {
-        if (other.scheduled) other.scheduled = iso(day(other.scheduled) + delta);
-        other.triggered = iso(day(other.triggered) + delta);
-        shifted++;
-      }
-    }
-  }
   Object.assign(e, next);
   const error = validateTask(trial);
   if (error) return { error, delta: 0, shifted: 0 };
   Object.assign(task, trial);
-  return { delta, shifted };
+  return { delta, shifted: 0 };
 }
 export function canConnect(task, from, to) {
   if (from === to || task.edges.some((e) => e[0] === from && e[1] === to)) return false;
@@ -185,20 +166,35 @@ export function canConnect(task, from, to) {
   return true;
 }
 export function connectBefore(task, newId, targetId) {
-  const added = task.events.find((event) => event.id === newId);
-  const incoming = task.edges.filter((edge) => edge[1] === targetId);
-  const fitsPath = incoming.every((edge) => {
-    const predecessor = task.events.find((event) => event.id === edge[0]);
-    return day(visibleDate(predecessor)) <= day(visibleDate(added));
-  });
-  if (fitsPath) {
-    for (const edge of incoming) edge[1] = newId;
-  } else {
-    // Earlier history is another incoming path; existing connections and dates stay intact.
-    added.lane = Math.max(0, ...task.events.map((event) => event.lane)) + 1;
-  }
+  for (const edge of task.edges) if (edge[1] === targetId) edge[1] = newId;
   task.edges.push([newId, targetId]);
-  return fitsPath ? 'inserted' : 'parallel';
+  return 'inserted';
+}
+export function connectBatch(task, sourceId, newIds, order = 'date') {
+  const events = new Map(task.events.map((event) => [event.id, event]));
+  const ids =
+    order === 'date'
+      ? [...newIds].sort(
+          (a, b) => day(visibleDate(events.get(a))) - day(visibleDate(events.get(b))),
+        )
+      : newIds;
+  if (order === 'entered' || !sourceId) {
+    let prior = sourceId;
+    for (const id of ids) {
+      if (prior) task.edges.push([prior, id]);
+      prior = id;
+    }
+    return;
+  }
+  const sourceDay = day(visibleDate(events.get(sourceId)));
+  let priorAfter = sourceId;
+  for (const id of ids) {
+    if (day(visibleDate(events.get(id))) < sourceDay) connectBefore(task, id, sourceId);
+    else {
+      task.edges.push([priorAfter, id]);
+      priorAfter = id;
+    }
+  }
 }
 export function removeEvent(task, id) {
   task.events = task.events.filter((e) => e.id !== id);

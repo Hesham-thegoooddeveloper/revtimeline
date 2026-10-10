@@ -5,13 +5,14 @@ import {
   updateEvent,
   canConnect,
   connectBefore,
+  connectBatch,
   validateTask,
   removeEvent,
   migrate,
   checkData,
   projectTotals,
   termsPercent,
-} from './model.mjs?v=2026-10-10-date-picker';
+} from './model.mjs?v=2026-10-10-flexible-dates';
 import { sample } from './sample.mjs';
 import {
   openActions,
@@ -19,13 +20,13 @@ import {
   projectStatus,
   contractValue,
   historyCounts,
-} from './portfolio.mjs?v=2026-10-10-date-picker';
+} from './portfolio.mjs?v=2026-10-10-flexible-dates';
 import { createAccount } from './account.mjs';
 import { createSync } from './sync.mjs';
-import { createExcelFile } from './excel.mjs?v=2026-10-10-date-picker';
+import { createExcelFile } from './excel.mjs?v=2026-10-10-flexible-dates';
 import { siteMarkup, friendlyError } from './site.mjs';
-import { timelineLayout, fitTimelineZoom } from './timeline-layout.mjs?v=2026-10-10-date-picker';
-import { enhanceDateInput } from './date-picker.mjs?v=2026-10-10-date-picker';
+import { timelineLayout, fitTimelineZoom } from './timeline-layout.mjs?v=2026-10-10-flexible-dates';
+import { enhanceDateInput } from './date-picker.mjs?v=2026-10-10-flexible-dates';
 const $ = (id) => document.getElementById(id),
   // Storage keys keep the original TrackFlow names so existing saved data is still found.
   key = 'trackflow-prototype-v1',
@@ -966,8 +967,8 @@ function openEditor(
   if (to && !e) {
     const target = t.events.find((item) => item.id === to);
     $('event-position').textContent = from
-      ? `Inserting between connected activities. Choose ${dateLabel(visibleDate(t.events.find((item) => item.id === from)))} through ${dateLabel(visibleDate(target))}, including either day.`
-      : `Adding before “${target.description}” (${dateLabel(visibleDate(target))}). Its date stays unchanged. Choose an earlier or the same day; if earlier than an existing predecessor, this activity starts another incoming path.`;
+      ? 'Inserting between connected activities. Choose any date; the other activities keep their dates.'
+      : `Adding before “${target.description}” (${dateLabel(visibleDate(target))}). Choose any date; the existing activity keeps its date, and incoming connections pass through the new activity.`;
   }
   $('event-warning').hidden = true;
   syncEditor();
@@ -1048,13 +1049,12 @@ $('event-form').onsubmit = (ev) => {
     tid = ctx.tid;
   const surface = focusedTask === tid ? 'modal' : 'main';
   let createdId,
-    result,
     error,
     valid = commit(() => {
       const t = taskBy(tid);
       if (editing) {
         const existing = t.events.find((e) => e.id === editing.eid);
-        result = updateEvent(t, existing.id, {
+        const result = updateEvent(t, existing.id, {
           description,
           kind,
           done,
@@ -1105,11 +1105,7 @@ $('event-form').onsubmit = (ev) => {
   }
   closeEditor();
   if (createdId) revealNewEvent(tid, createdId, surface);
-  toast(
-    result?.shifted
-      ? `Saved · ${result.shifted} upcoming actions shifted by ${Math.abs(result.delta)} days`
-      : 'Event saved',
-  );
+  toast('Event saved');
 };
 $('close-editor').onclick = closeEditor;
 $('editor-backdrop').onclick = closeEditor;
@@ -1169,6 +1165,8 @@ function openBatch(tid, afterId = null) {
       )
       .join('');
   $('batch-source').value = afterId || latest?.id || '';
+  $('batch-order').value = 'date';
+  syncBatchGuide();
   $('batch-rows').replaceChildren();
   $('batch-warning').hidden = true;
   const source = task.events.find((event) => event.id === $('batch-source').value);
@@ -1176,6 +1174,19 @@ function openBatch(tid, afterId = null) {
   $('batch-dialog').showModal();
   $('batch-rows').querySelector('.batch-description').focus();
 }
+function syncBatchGuide() {
+  const source = taskBy(batchTaskId)?.events.find((event) => event.id === $('batch-source').value);
+  $('batch-guide').textContent =
+    $('batch-order').value === 'date'
+      ? source
+        ? `Dates before ${dateLabel(visibleDate(source))} connect before “${source.description}”; dates on or after it connect after. The activities are connected by date without changing any dates.`
+        : 'The activities will form a new path in date order. Their entered dates stay unchanged.'
+      : source
+        ? `The first activity connects after “${source.description}”, then each following row connects after the previous one. Dates may be in any order.`
+        : 'The activities will form a new path in the order shown. Dates may be in any order.';
+}
+$('batch-source').onchange = syncBatchGuide;
+$('batch-order').onchange = syncBatchGuide;
 $('add-sequence-from-event').onclick = () => {
   const { tid, eid } = editing;
   openBatch(tid, eid);
@@ -1201,7 +1212,7 @@ $('batch-form').onsubmit = (event) => {
         : task.events.length
           ? Math.max(...task.events.map((item) => item.lane)) + 1
           : 0;
-    let prior = source?.id || null;
+    const newIds = [];
     for (const row of rows) {
       const kind = row.querySelector('.batch-type').value,
         date = row.querySelector('.batch-date').value,
@@ -1222,10 +1233,10 @@ $('batch-form').onsubmit = (event) => {
         actual: kind === 'fact' ? date : done ? row.querySelector('.batch-actual').value : null,
         lane,
       });
-      if (prior) task.edges.push([prior, id]);
-      prior = id;
+      newIds.push(id);
       lastId = id;
     }
+    connectBatch(task, source?.id || null, newIds, $('batch-order').value);
     error = validateTask(task);
     return error;
   });

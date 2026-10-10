@@ -1865,6 +1865,25 @@ input[readonly] {
 .batch-dialog {
   width: min(720px, calc(100vw - 24px));
 }
+.batch-dialog .popup-actions {
+  position: sticky;
+  bottom: -24px;
+  z-index: 2;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--rule-soft);
+  background: var(--raise);
+}
+.batch-setup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .batch-setup {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
 #batch-rows {
   display: grid;
   gap: 10px;
@@ -1872,6 +1891,12 @@ input[readonly] {
   overflow-y: auto;
   padding: 2px;
   margin-bottom: 10px;
+}
+@media (max-width: 600px) {
+  #batch-rows {
+    max-height: none;
+    overflow: visible;
+  }
 }
 .batch-row {
   position: relative;
@@ -1889,6 +1914,12 @@ input[readonly] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+@media (max-width: 600px) {
+  .batch-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 .batch-row .check-label {
   margin-bottom: 10px;

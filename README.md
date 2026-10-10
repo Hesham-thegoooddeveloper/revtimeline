@@ -29,8 +29,8 @@ RevTimeline (formerly TrackFlow) is a project-history application. Every revisio
 - Inspect full event details on hover and edit through a popup.
 - Insert an event between connected events, create branches and merge paths.
 - Track occurrence dates for recorded events and trigger, optional target and completion dates for actions.
-- Preserve original due dates while shifting upcoming actions' due and trigger dates when visible dates change.
-- Allow connected activities on the same day; reject dates that reverse a connection or put an action before its trigger without changing saved records.
+- Preserve original due dates and each activity’s entered dates when another activity changes.
+- Allow connected activities and action dates in any date order. Batch entry can place activities by date around a selected activity or keep the entered connection order.
 - Zoom, fit, pan horizontally within a task and vertically through a project, or open a task in a larger window.
 - Undo and redo application changes within the current session.
 - View recorded events and active actions through an optional daily calendar.
